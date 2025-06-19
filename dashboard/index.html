@@ -3,588 +3,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Schema Web Analyzer - Advanced Schema Markup Analysis</title>
-    
-    <!-- Tailwind CSS -->
+    <title>Schema Web Analyzer</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- D3.js for visualizations -->
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    
-    <!-- Custom styles -->
-    <link rel="stylesheet" href="assets/css/style.css">
-    
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="assets/icons/logo.svg">
-    
-    <meta name="description" content="Advanced Schema markup analyzer with entity relationships and consistency checking">
-    <meta name="keywords" content="schema, SEO, structured data, JSON-LD, markup analyzer">
 </head>
 <body class="bg-gray-50 min-h-screen">
-    <!-- Header -->
-    <header class="bg-white shadow-sm border-b">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-16">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <h1 class="text-2xl font-bold text-gray-900">
-                            🌐 Schema Web Analyzer
-                        </h1>
-                    </div>
-                    <div class="hidden md:block ml-10">
-                        <div class="flex items-baseline space-x-4">
-                            <span class="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                                v1.0.0
-                            </span>
-                            <span class="text-sm text-gray-500">
-                                Advanced Schema Analysis & SEO Optimization
-                            </span>
-                        </div>
-                    </div>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <button id="settingsBtn" class="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100">
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        </svg>
-                    </button>
-                    <button id="helpBtn" class="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100">
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                    </button>
-                </div>
+    <div class="max-w-4xl mx-auto py-8 px-4">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">🕸️ Schema Web Analyzer</h1>
+            <p class="text-gray-600">Advanced Schema.org markup analysis tool</p>
+        </header>
+
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-lg font-semibold mb-4">Quick Analysis</h2>
+            <div class="flex space-x-4">
+                <input 
+                    type="url" 
+                    id="urlInput" 
+                    placeholder="https://example.com"
+                    class="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+                    value="https://schema.org"
+                >
+                <button 
+                    id="analyzeBtn"
+                    class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                    Analyze
+                </button>
             </div>
         </div>
-    </header>
 
-    <!-- Main Content -->
-    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <!-- URL Analysis Panel -->
-        <div class="px-4 py-6 sm:px-0">
-            <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-xl font-semibold text-gray-900">🔍 URL Analysis</h2>
-                    <div class="flex space-x-2">
-                        <button id="quickCheckBtn" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors">
-                            Quick Check
-                        </button>
-                        <button id="deepAnalysisBtn" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors">
-                            Deep Analysis
-                        </button>
-                    </div>
-                </div>
+        <div id="results" class="hidden bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold mb-4">Results</h3>
+            <div id="resultsContent">
+                <!-- Results will appear here -->
+            </div>
+        </div>
+
+        <div id="loading" class="hidden text-center py-8">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p>Analyzing...</p>
+        </div>
+
+        <div id="error" class="hidden bg-red-50 border border-red-200 rounded-lg p-4">
+            <h3 class="text-red-800 font-semibold">Error</h3>
+            <p id="errorMessage" class="text-red-700"></p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const urlInput = document.getElementById('urlInput');
+
+            analyzeBtn.addEventListener('click', analyzeUrl);
+            urlInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') analyzeUrl();
+            });
+
+            async function analyzeUrl() {
+                const url = urlInput.value.trim();
+                if (!url) return;
+
+                showLoading();
+
+                try {
+                    const response = await fetch('/api/analyze', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ url })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        showResults(data);
+                    } else {
+                        showError(data.error || 'Analysis failed');
+                    }
+                } catch (error) {
+                    showError('Network error: ' + error.message);
+                }
+            }
+
+            function showLoading() {
+                document.getElementById('loading').classList.remove('hidden');
+                document.getElementById('results').classList.add('hidden');
+                document.getElementById('error').classList.add('hidden');
+            }
+
+            function showResults(data) {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('error').classList.add('hidden');
                 
-                <div class="space-y-4">
-                    <!-- URL Input -->
-                    <div class="flex space-x-4">
-                        <div class="flex-1">
-                            <input 
-                                type="url" 
-                                id="urlInput" 
-                                placeholder="https://example.com" 
-                                class="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                autocomplete="url"
-                            >
+                const results = document.getElementById('results');
+                const content = document.getElementById('resultsContent');
+                
+                content.innerHTML = `
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div class="text-center p-4 bg-blue-50 rounded-lg">
+                            <div class="text-2xl font-bold text-blue-600">${data.results.seo_score.overall}</div>
+                            <div class="text-sm text-blue-800">SEO Score</div>
                         </div>
-                        <button 
-                            id="analyzeBtn" 
-                            class="px-8 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                        >
-                            🚀 Analyze
-                        </button>
+                        <div class="text-center p-4 bg-green-50 rounded-lg">
+                            <div class="text-2xl font-bold text-green-600">${data.results.basic_info.schemas_found}</div>
+                            <div class="text-sm text-green-800">Schemas</div>
+                        </div>
+                        <div class="text-center p-4 bg-purple-50 rounded-lg">
+                            <div class="text-2xl font-bold text-purple-600">${data.results.seo_score.consistency_score}</div>
+                            <div class="text-sm text-purple-800">Consistency</div>
+                        </div>
+                        <div class="text-center p-4 bg-yellow-50 rounded-lg">
+                            <div class="text-2xl font-bold text-yellow-600">${data.results.recommendations.length}</div>
+                            <div class="text-sm text-yellow-800">Issues</div>
+                        </div>
                     </div>
                     
-                    <!-- Analysis Options -->
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-md">
-                        <label class="flex items-center space-x-2">
-                            <input type="checkbox" id="deepScan" checked class="rounded text-blue-600">
-                            <span class="text-sm text-gray-700">Deep Scan</span>
-                        </label>
-                        <label class="flex items-center space-x-2">
-                            <input type="checkbox" id="includeEntities" checked class="rounded text-blue-600">
-                            <span class="text-sm text-gray-700">Entity Analysis</span>
-                        </label>
-                        <label class="flex items-center space-x-2">
-                            <input type="checkbox" id="includeRecommendations" checked class="rounded text-blue-600">
-                            <span class="text-sm text-gray-700">Recommendations</span>
-                        </label>
-                        <label class="flex items-center space-x-2">
-                            <input type="checkbox" id="checkConsistency" checked class="rounded text-blue-600">
-                            <span class="text-sm text-gray-700">Consistency Check</span>
-                        </label>
+                    <div class="space-y-4">
+                        <h4 class="font-semibold">Recommendations:</h4>
+                        ${data.results.recommendations.map(rec => `
+                            <div class="border-l-4 border-blue-500 bg-blue-50 p-4">
+                                <div class="font-medium">${rec.type}</div>
+                                <div class="text-sm text-gray-600">${rec.message}</div>
+                                ${rec.example ? `<pre class="mt-2 text-xs bg-gray-800 text-green-400 p-2 rounded"><code>${rec.example}</code></pre>` : ''}
+                            </div>
+                        `).join('')}
                     </div>
+                `;
+                
+                results.classList.remove('hidden');
+            }
 
-                    <!-- Site-wide Scan Option -->
-                    <div class="border-t pt-4">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <h3 class="text-sm font-medium text-gray-900">Site-wide Analysis</h3>
-                                <p class="text-sm text-gray-500">Analyze multiple pages for comprehensive insights</p>
-                            </div>
-                            <button 
-                                id="siteAnalysisBtn" 
-                                class="px-6 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
-                            >
-                                🗺️ Scan Site
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+            function showError(message) {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('results').classList.add('hidden');
+                document.getElementById('errorMessage').textContent = message;
+                document.getElementById('error').classList.remove('hidden');
+            }
 
-        <!-- Loading State -->
-        <div id="loadingState" class="hidden">
-            <div class="bg-white rounded-lg shadow-lg p-8 mb-8">
-                <div class="flex items-center justify-center space-x-4">
-                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                    <div>
-                        <h3 class="text-lg font-medium text-gray-900" id="loadingTitle">Analyzing...</h3>
-                        <p class="text-sm text-gray-500" id="loadingMessage">Please wait while we analyze your website</p>
-                    </div>
-                </div>
-                <div class="mt-4">
-                    <div class="w-full bg-gray-200 rounded-full h-2">
-                        <div id="progressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-2" id="progressText">0%</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Results Container -->
-        <div id="resultsContainer" class="hidden">
-            <!-- Stats Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div class="bg-white rounded-lg shadow-lg p-6">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div class="w-8 h-8 bg-blue-100 rounded-md flex items-center justify-center">
-                                <span class="text-blue-600 text-lg">📊</span>
-                            </div>
-                        </div>
-                        <div class="ml-4">
-                            <p class="text-sm font-medium text-gray-500">SEO Score</p>
-                            <p class="text-2xl font-semibold text-gray-900" id="seoScore">--</p>
-                        </div>
-                    </div>
-                    <div class="mt-2">
-                        <span class="text-sm font-medium" id="seoGrade">--</span>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-lg shadow-lg p-6">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div class="w-8 h-8 bg-green-100 rounded-md flex items-center justify-center">
-                                <span class="text-green-600 text-lg">🕸️</span>
-                            </div>
-                        </div>
-                        <div class="ml-4">
-                            <p class="text-sm font-medium text-gray-500">Entities Found</p>
-                            <p class="text-2xl font-semibold text-gray-900" id="entitiesCount">--</p>
-                        </div>
-                    </div>
-                    <div class="mt-2">
-                        <span class="text-sm text-gray-500" id="entityTypes">-- types</span>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-lg shadow-lg p-6">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div class="w-8 h-8 bg-yellow-100 rounded-md flex items-center justify-center">
-                                <span class="text-yellow-600 text-lg">⚠️</span>
-                            </div>
-                        </div>
-                        <div class="ml-4">
-                            <p class="text-sm font-medium text-gray-500">Issues Found</p>
-                            <p class="text-2xl font-semibold text-gray-900" id="issuesCount">--</p>
-                        </div>
-                    </div>
-                    <div class="mt-2">
-                        <span class="text-sm" id="issuesSeverity">--</span>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-lg shadow-lg p-6">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <div class="w-8 h-8 bg-purple-100 rounded-md flex items-center justify-center">
-                                <span class="text-purple-600 text-lg">🔗</span>
-                            </div>
-                        </div>
-                        <div class="ml-4">
-                            <p class="text-sm font-medium text-gray-500">Consistency</p>
-                            <p class="text-2xl font-semibold text-gray-900" id="consistencyScore">--</p>
-                        </div>
-                    </div>
-                    <div class="mt-2">
-                        <span class="text-sm" id="consistencyGrade">--</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Main Results Grid -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <!-- Issues & Recommendations -->
-                <div class="bg-white rounded-lg shadow-lg">
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <h3 class="text-lg font-medium text-gray-900">📋 Issues & Recommendations</h3>
-                        <div class="flex space-x-2 mt-2">
-                            <button id="filterAll" class="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors">All</button>
-                            <button id="filterHigh" class="px-3 py-1 text-xs bg-red-100 text-red-700 rounded-full hover:bg-red-200 transition-colors">High</button>
-                            <button id="filterMedium" class="px-3 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-full hover:bg-yellow-200 transition-colors">Medium</button>
-                            <button id="filterLow" class="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors">Low</button>
-                        </div>
-                    </div>
-                    <div class="p-6">
-                        <div id="recommendationsList" class="space-y-4">
-                            <!-- Recommendations will be populated here -->
-                            <div class="text-center text-gray-500 py-8">
-                                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 00-2 2m-6 9l2 2 4-4"/>
-                                </svg>
-                                <p class="mt-2">No analysis results yet</p>
-                                <p class="text-sm text-gray-400">Analyze a URL to see recommendations</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Entity Relationship Graph -->
-                <div class="bg-white rounded-lg shadow-lg">
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <div class="flex items-center justify-between">
-                            <h3 class="text-lg font-medium text-gray-900">🕸️ Entity Relationships</h3>
-                            <div class="flex space-x-2">
-                                <button id="resetZoom" class="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors">Reset</button>
-                                <button id="centerGraph" class="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors">Center</button>
-                            </div>
-                        </div>
-                        <div class="flex space-x-4 mt-2">
-                            <button id="filterAllEntities" class="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors active">All</button>
-                            <button id="filterOrganization" class="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200 transition-colors">Organization</button>
-                            <button id="filterPerson" class="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors">Person</button>
-                            <button id="filterProduct" class="px-3 py-1 text-xs bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors">Product</button>
-                        </div>
-                    </div>
-                    <div class="p-6">
-                        <div id="entityGraph" class="w-full h-96 border rounded-lg bg-gray-50">
-                            <!-- D3.js visualization will be rendered here -->
-                            <div class="flex items-center justify-center h-full text-gray-500">
-                                <div class="text-center">
-                                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                                    </svg>
-                                    <p class="mt-2">No entity data yet</p>
-                                    <p class="text-sm text-gray-400">Analyze a URL to see entity relationships</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Graph Legend -->
-                        <div class="mt-4 flex flex-wrap gap-4 text-xs">
-                            <div class="flex items-center space-x-2">
-                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
-                                <span>Valid Connection</span>
-                            </div>
-                            <div class="flex items-center space-x-2">
-                                <div class="w-3 h-3 bg-red-500 rounded-full"></div>
-                                <span>Broken Reference</span>
-                            </div>
-                            <div class="flex items-center space-x-2">
-                                <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                                <span>Orphaned Entity</span>
-                            </div>
-                            <div class="flex items-center space-x-2">
-                                <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
-                                <span>Good @id Pattern</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Schema Details -->
-            <div class="mt-8 bg-white rounded-lg shadow-lg">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-medium text-gray-900">📄 Schema Details</h3>
-                        <div class="flex space-x-2">
-                            <button id="expandAllSchemas" class="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors">Expand All</button>
-                            <button id="collapseAllSchemas" class="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors">Collapse All</button>
-                            <button id="exportSchemas" class="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors">Export</button>
-                        </div>
-                    </div>
-                    <!-- Schema Filters -->
-                    <div class="mt-2">
-                        <select id="schemaTypeFilter" class="text-sm border-gray-300 rounded-md">
-                            <option value="all">All Schema Types</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="p-6">
-                    <div id="schemaDetailsList" class="space-y-4">
-                        <!-- Schema details will be populated here -->
-                        <div class="text-center text-gray-500 py-8">
-                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                            </svg>
-                            <p class="mt-2">No schemas found</p>
-                            <p class="text-sm text-gray-400">Analyze a URL to see schema details</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Recent Scans -->
-        <div class="mt-8 bg-white rounded-lg shadow-lg">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <div class="flex items-center justify-between">
-                    <h3 class="text-lg font-medium text-gray-900">📚 Recent Scans</h3>
-                    <button id="refreshScans" class="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors">
-                        <svg class="w-4 h-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                        </svg>
-                        Refresh
-                    </button>
-                </div>
-            </div>
-            <div class="p-6">
-                <div id="recentScansList">
-                    <!-- Recent scans will be populated here -->
-                    <div class="text-center text-gray-500 py-8">
-                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 00-2 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
-                        </svg>
-                        <p class="mt-2">No recent scans</p>
-                        <p class="text-sm text-gray-400">Your analysis history will appear here</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <!-- Settings Modal -->
-    <div id="settingsModal" class="fixed inset-0 z-50 hidden">
-        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
-        <div class="fixed inset-0 z-10 overflow-y-auto">
-            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-                <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
-                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-medium text-gray-900">⚙️ Settings</h3>
-                            <button id="closeSettings" class="text-gray-400 hover:text-gray-500">
-                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
-                            </button>
-                        </div>
-                        
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Analysis Timeout</label>
-                                <select id="timeoutSetting" class="w-full border-gray-300 rounded-md">
-                                    <option value="15000">15 seconds</option>
-                                    <option value="30000" selected>30 seconds</option>
-                                    <option value="60000">60 seconds</option>
-                                </select>
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Max Pages (Site Scan)</label>
-                                <select id="maxPagesSetting" class="w-full border-gray-300 rounded-md">
-                                    <option value="10">10 pages</option>
-                                    <option value="25" selected>25 pages</option>
-                                    <option value="50">50 pages</option>
-                                    <option value="100">100 pages</option>
-                                </select>
-                            </div>
-                            
-                            <div>
-                                <label class="flex items-center space-x-2">
-                                    <input type="checkbox" id="autoRefresh" class="rounded text-blue-600">
-                                    <span class="text-sm text-gray-700">Auto-refresh results</span>
-                                </label>
-                            </div>
-                            
-                            <div>
-                                <label class="flex items-center space-x-2">
-                                    <input type="checkbox" id="enableNotifications" class="rounded text-blue-600">
-                                    <span class="text-sm text-gray-700">Enable notifications</span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
-                        <button id="saveSettings" class="inline-flex w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm">
-                            Save
-                        </button>
-                        <button id="cancelSettings" class="mt-3 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                            Cancel
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Help Modal -->
-    <div id="helpModal" class="fixed inset-0 z-50 hidden">
-        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
-        <div class="fixed inset-0 z-10 overflow-y-auto">
-            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-                <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl">
-                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-medium text-gray-900">❓ Help & Documentation</h3>
-                            <button id="closeHelp" class="text-gray-400 hover:text-gray-500">
-                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
-                            </button>
-                        </div>
-                        
-                        <div class="space-y-6">
-                            <div>
-                                <h4 class="font-medium text-gray-900 mb-2">🚀 Getting Started</h4>
-                                <ul class="text-sm text-gray-600 space-y-1">
-                                    <li>• Enter a URL to analyze its schema markup</li>
-                                    <li>• Choose between Quick Check or Deep Analysis</li>
-                                    <li>• Use Site Scan for comprehensive multi-page analysis</li>
-                                    <li>• Review recommendations to improve SEO</li>
-                                </ul>
-                            </div>
-                            
-                            <div>
-                                <h4 class="font-medium text-gray-900 mb-2">📊 Understanding Scores</h4>
-                                <ul class="text-sm text-gray-600 space-y-1">
-                                    <li>• <strong>SEO Score:</strong> Overall schema quality (0-100)</li>
-                                    <li>• <strong>Consistency:</strong> @id pattern adherence</li>
-                                    <li>• <strong>Entities:</strong> Number of structured data entities</li>
-                                    <li>• <strong>Issues:</strong> Problems requiring attention</li>
-                                </ul>
-                            </div>
-                            
-                            <div>
-                                <h4 class="font-medium text-gray-900 mb-2">🕸️ Entity Graph</h4>
-                                <ul class="text-sm text-gray-600 space-y-1">
-                                    <li>• <span class="inline-block w-3 h-3 bg-green-500 rounded-full mr-2"></span>Valid connections between entities</li>
-                                    <li>• <span class="inline-block w-3 h-3 bg-red-500 rounded-full mr-2"></span>Broken references that need fixing</li>
-                                    <li>• <span class="inline-block w-3 h-3 bg-yellow-500 rounded-full mr-2"></span>Orphaned entities without connections</li>
-                                    <li>• <span class="inline-block w-3 h-3 bg-blue-500 rounded-full mr-2"></span>Entities with proper @id patterns</li>
-                                </ul>
-                            </div>
-                            
-                            <div>
-                                <h4 class="font-medium text-gray-900 mb-2">💡 Best Practices</h4>
-                                <ul class="text-sm text-gray-600 space-y-1">
-                                    <li>• Use consistent @id patterns (schema:EntityType)</li>
-                                    <li>• Link related entities with proper references</li>
-                                    <li>• Include required properties for each schema type</li>
-                                    <li>• Test regularly to maintain schema quality</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
-                        <button id="closeHelpBtn" class="inline-flex w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm">
-                            Got it!
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Site Analysis Modal -->
-    <div id="siteAnalysisModal" class="fixed inset-0 z-50 hidden">
-        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
-        <div class="fixed inset-0 z-10 overflow-y-auto">
-            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-                <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
-                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-medium text-gray-900">🗺️ Site-wide Analysis</h3>
-                            <button id="closeSiteAnalysis" class="text-gray-400 hover:text-gray-500">
-                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
-                            </button>
-                        </div>
-                        
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Start URL</label>
-                                <input type="url" id="siteStartUrl" class="w-full border-gray-300 rounded-md" placeholder="https://example.com">
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Max Pages to Scan</label>
-                                <select id="siteMaxPages" class="w-full border-gray-300 rounded-md">
-                                    <option value="10">10 pages</option>
-                                    <option value="25" selected>25 pages</option>
-                                    <option value="50">50 pages</option>
-                                    <option value="100">100 pages</option>
-                                </select>
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Crawl Options</label>
-                                <div class="space-y-2">
-                                    <label class="flex items-center space-x-2">
-                                        <input type="checkbox" id="includeSitemaps" checked class="rounded text-blue-600">
-                                        <span class="text-sm text-gray-700">Include sitemaps</span>
-                                    </label>
-                                    <label class="flex items-center space-x-2">
-                                        <input type="checkbox" id="followLinks" checked class="rounded text-blue-600">
-                                        <span class="text-sm text-gray-700">Follow internal links</span>
-                                    </label>
-                                </div>
-                            </div>
-                            
-                            <div class="bg-blue-50 p-4 rounded-md">
-                                <div class="flex">
-                                    <div class="flex-shrink-0">
-                                        <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
-                                        </svg>
-                                    </div>
-                                    <div class="ml-3">
-                                        <p class="text-sm text-blue-700">
-                                            Site analysis may take several minutes depending on the number of pages. You can monitor progress and stop the scan at any time.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
-                        <button id="startSiteAnalysis" class="inline-flex w-full justify-center rounded-md border border-transparent bg-purple-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm">
-                            Start Analysis
-                        </button>
-                        <button id="cancelSiteAnalysis" class="mt-3 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                            Cancel
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Toast Notifications -->
-    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
-
-    <!-- Scripts -->
-    <script src="assets/js/utils.js"></script>
-    <script src="assets/js/config.js"></script>
-    <script src="api-client.js"></script>
-    <script src="components.js"></script>
-    <script src="visualizations.js"></script>
-    <script src="app.js"></script>
+            // Test API health on load
+            fetch('/api/health')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('API Health:', data);
+                })
+                .catch(error => {
+                    console.error('API Health check failed:', error);
+                });
+        });
+    </script>
 </body>
 </html>
