@@ -20,7 +20,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install    ← **זה השינוי**
+RUN npm install
 
 # Copy application code
 COPY . .
