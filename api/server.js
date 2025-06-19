@@ -1,284 +1,132 @@
-// api/server.js - Schema Web Analyzer Server
+// Simple Express server without external configs
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const path = require('path');
-const fs = require('fs-extra');
-const winston = require('winston');
-const { RateLimiterMemory } = require('rate-limiter-flexible');
 
-// Import local modules
-const config = require('./config');
-const apiRoutes = require('./routes/api');
-const healthRoutes = require('./routes/health');
-const errorHandler = require('./middleware/errorHandler');
-const logger = require('./utils/logger');
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-class SchemaWebAnalyzer {
-    constructor() {
-        this.app = express();
-        this.server = null;
-        this.setupMiddleware();
-        this.setupRoutes();
-        this.setupErrorHandling();
-    }
-
-    setupMiddleware() {
-        // Security
-        this.app.use(helmet({
-            contentSecurityPolicy: {
-                directives: {
-                    defaultSrc: ["'self'"],
-                    styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com"],
-                    scriptSrc: ["'self'", "'unsafe-inline'", "https://d3js.org", "https://cdn.tailwindcss.com"],
-                    imgSrc: ["'self'", "data:", "https:"],
-                    connectSrc: ["'self'"]
-                }
-            }
-        }));
-
-        // CORS
-        this.app.use(cors({
-            origin: config.ALLOWED_ORIGINS,
-            credentials: true,
-            methods: ['GET', 'POST', 'PUT', 'DELETE'],
-            allowedHeaders: ['Content-Type', 'Authorization']
-        }));
-
-        // Compression
-        this.app.use(compression());
-
-        // Body parsing
-        this.app.use(express.json({ limit: '10mb' }));
-        this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-        // Rate limiting
-        const rateLimiter = new RateLimiterMemory({
-            keyGenerator: (req) => req.ip,
-            points: config.RATE_LIMIT.POINTS,
-            duration: config.RATE_LIMIT.DURATION
-        });
-
-        this.app.use(async (req, res, next) => {
-            try {
-                await rateLimiter.consume(req.ip);
-                next();
-            } catch (rejRes) {
-                const secs = Math.round(rejRes.msBeforeNext / 1000) || 1;
-                res.set('Retry-After', String(secs));
-                res.status(429).json({
-                    error: 'Rate limit exceeded',
-                    retryAfter: secs
-                });
-            }
-        });
-
-        // Static files
-        this.app.use(express.static(path.join(__dirname, '../dashboard')));
-        this.app.use('/assets', express.static(path.join(__dirname, '../assets')));
-
-        // Logging
-        this.app.use((req, res, next) => {
-            logger.info(`${req.method} ${req.url}`, {
-                ip: req.ip,
-                userAgent: req.get('User-Agent'),
-                timestamp: new Date().toISOString()
-            });
-            next();
-        });
-    }
-
-    setupRoutes() {
-        // Health check
-        this.app.use('/health', healthRoutes);
-
-        // API routes
-        this.app.use('/api', apiRoutes);
-
-        // Dashboard route
-        this.app.get('/', (req, res) => {
-            res.sendFile(path.join(__dirname, '../dashboard/index.html'));
-        });
-
-        // 404 handler
-        this.app.use('*', (req, res) => {
-            if (req.url.startsWith('/api/')) {
-                res.status(404).json({
-                    error: 'API endpoint not found',
-                    path: req.url,
-                    method: req.method
-                });
-            } else {
-                res.status(404).sendFile(path.join(__dirname, '../dashboard/index.html'));
-            }
-        });
-    }
-
-    setupErrorHandling() {
-        this.app.use(errorHandler);
-
-        // Handle unhandled promise rejections
-        process.on('unhandledRejection', (err) => {
-            logger.error('Unhandled Promise Rejection:', err);
-            this.shutdown();
-        });
-
-        // Handle uncaught exceptions
-        process.on('uncaughtException', (err) => {
-            logger.error('Uncaught Exception:', err);
-            this.shutdown();
-        });
-
-        // Graceful shutdown
-        process.on('SIGTERM', () => {
-            logger.info('SIGTERM received, shutting down gracefully');
-            this.shutdown();
-        });
-
-        process.on('SIGINT', () => {
-            logger.info('SIGINT received, shutting down gracefully');
-            this.shutdown();
-        });
-    }
-
-    async ensureDirectories() {
-        const dirs = [
-            path.join(__dirname, '../data/scans'),
-            path.join(__dirname, '../data/templates'),
-            path.join(__dirname, '../data/cache'),
-            path.join(__dirname, '../assets/temp')
-        ];
-
-        for (const dir of dirs) {
-            await fs.ensureDir(dir);
-        }
-
-        logger.info('Ensured all required directories exist');
-    }
-
-    async loadTemplates() {
-        const templatesDir = path.join(__dirname, '../data/templates');
-        
-        try {
-            const templateFiles = await fs.readdir(templatesDir);
-            const templates = {};
-
-            for (const file of templateFiles) {
-                if (file.endsWith('.json')) {
-                    const templateName = path.basename(file, '.json');
-                    const templatePath = path.join(templatesDir, file);
-                    templates[templateName] = await fs.readJson(templatePath);
-                }
-            }
-
-            this.templates = templates;
-            logger.info(`Loaded ${Object.keys(templates).length} schema templates`);
-        } catch (error) {
-            logger.warn('Could not load templates:', error.message);
-            this.templates = {};
+// Basic middleware
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com"],
+            scriptSrc: ["'self'", "https://d3js.org", "https://cdn.tailwindcss.com"],
+            imgSrc: ["'self'", "data:", "https:"],
         }
     }
+}));
 
-    async start() {
-        try {
-            await this.ensureDirectories();
-            await this.loadTemplates();
+app.use(cors());
+app.use(compression());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.static('dashboard'));
 
-            this.server = this.app.listen(config.PORT, config.HOST, () => {
-                logger.info(`🚀 Schema Web Analyzer started`);
-                logger.info(`📊 Dashboard: http://${config.HOST}:${config.PORT}`);
-                logger.info(`🔧 API: http://${config.HOST}:${config.PORT}/api`);
-                logger.info(`🌍 Environment: ${config.NODE_ENV}`);
-                
-                if (config.NODE_ENV === 'development') {
-                    logger.info(`📋 API Docs: http://${config.HOST}:${config.PORT}/api/docs`);
-                }
-            });
-
-            // Cleanup on startup
-            this.scheduleCleanup();
-
-        } catch (error) {
-            logger.error('Failed to start server:', error);
-            process.exit(1);
-        }
+// Simple rate limiting (in-memory)
+const rateLimitStore = new Map();
+const rateLimit = (req, res, next) => {
+    const ip = req.ip || req.connection.remoteAddress;
+    const now = Date.now();
+    const windowStart = now - 15 * 60 * 1000; // 15 minutes
+    
+    if (!rateLimitStore.has(ip)) {
+        rateLimitStore.set(ip, []);
     }
-
-    scheduleCleanup() {
-        // Clean old scan data every 24 hours
-        const cron = require('node-cron');
-        
-        cron.schedule('0 2 * * *', async () => {
-            logger.info('Starting scheduled cleanup...');
-            
-            try {
-                const scansDir = path.join(__dirname, '../data/scans');
-                const cacheDir = path.join(__dirname, '../data/cache');
-                const now = Date.now();
-                const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
-
-                // Clean old scans
-                const scanFiles = await fs.readdir(scansDir);
-                let cleanedScans = 0;
-
-                for (const file of scanFiles) {
-                    const filePath = path.join(scansDir, file);
-                    const stats = await fs.stat(filePath);
-                    
-                    if (now - stats.mtime.getTime() > maxAge) {
-                        await fs.remove(filePath);
-                        cleanedScans++;
-                    }
-                }
-
-                // Clean old cache
-                const cacheFiles = await fs.readdir(cacheDir);
-                let cleanedCache = 0;
-
-                for (const file of cacheFiles) {
-                    const filePath = path.join(cacheDir, file);
-                    const stats = await fs.stat(filePath);
-                    
-                    if (now - stats.mtime.getTime() > maxAge) {
-                        await fs.remove(filePath);
-                        cleanedCache++;
-                    }
-                }
-
-                logger.info(`Cleanup completed: ${cleanedScans} scans, ${cleanedCache} cache files removed`);
-
-            } catch (error) {
-                logger.error('Cleanup failed:', error);
-            }
-        });
+    
+    const requests = rateLimitStore.get(ip).filter(time => time > windowStart);
+    
+    if (requests.length >= 100) {
+        return res.status(429).json({ error: 'Too many requests' });
     }
+    
+    requests.push(now);
+    rateLimitStore.set(ip, requests);
+    next();
+};
 
-    shutdown() {
-        if (this.server) {
-            this.server.close(() => {
-                logger.info('Server shut down gracefully');
-                process.exit(0);
-            });
+app.use(rateLimit);
 
-            // Force shutdown after 10 seconds
-            setTimeout(() => {
-                logger.error('Forcing server shutdown');
-                process.exit(1);
-            }, 10000);
-        } else {
-            process.exit(0);
-        }
-    }
-}
-
-// Start the server
-if (require.main === module) {
-    const analyzer = new SchemaWebAnalyzer();
-    analyzer.start().catch((error) => {
-        console.error('Failed to start Schema Web Analyzer:', error);
-        process.exit(1);
+// API Routes
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'OK',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+        version: '1.0.0'
     });
-}
+});
 
-module.exports = SchemaWebAnalyzer;
+app.post('/api/analyze', async (req, res) => {
+    try {
+        const { url } = req.body;
+        
+        if (!url) {
+            return res.status(400).json({
+                success: false,
+                error: 'URL is required'
+            });
+        }
+
+        console.log(`Analyzing URL: ${url}`);
+
+        // Basic response for now - will implement full analysis later
+        res.json({
+            success: true,
+            results: {
+                url,
+                schemas: [],
+                seoScore: 0,
+                issues: 0,
+                timestamp: new Date().toISOString(),
+                message: 'Analysis endpoint ready - full implementation coming next!'
+            }
+        });
+        
+    } catch (error) {
+        console.error('Analysis error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error'
+        });
+    }
+});
+
+// Error handling
+app.use((err, req, res, next) => {
+    console.error('Unhandled error:', err);
+    res.status(500).json({
+        success: false,
+        error: 'Internal server error'
+    });
+});
+
+// 404 handler
+app.use((req, res) => {
+    res.status(404).json({
+        success: false,
+        error: 'Endpoint not found'
+    });
+});
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+    console.log('Graceful shutdown initiated');
+    process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+    console.log('Graceful shutdown initiated');
+    process.exit(0);
+});
+
+// Start server
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🌐 Schema Web Analyzer running on port ${PORT}`);
+    console.log(`📊 Dashboard: http://localhost:${PORT}`);
+    console.log(`🔍 API Health: http://localhost:${PORT}/api/health`);
+    console.log(`🐳 Environment: ${process.env.NODE_ENV || 'development'}`);
+});
