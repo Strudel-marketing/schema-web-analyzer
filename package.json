@@ -10,7 +10,8 @@
     "test:watch": "jest --watch",
     "setup": "node scripts/setup.js",
     "lint": "eslint api/ --ext .js",
-    "format": "prettier --write \"api/**/*.js\""
+    "format": "prettier --write \"api/**/*.js\"",
+    "health-check": "node scripts/health-check.js"
   },
   "keywords": [
     "seo", 
