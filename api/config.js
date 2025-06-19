@@ -1,5 +1,4 @@
 // api/config.js - Schema Web Analyzer Configuration
-require('dotenv').config();
 
 const config = {
     // Server configuration
