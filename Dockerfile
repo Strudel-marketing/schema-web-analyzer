@@ -11,6 +11,7 @@ RUN apk add --no-cache \
     ca-certificates \
     ttf-freefont \
     curl \
+    git \
     && rm -rf /var/cache/apk/*
 
 # Tell Puppeteer to skip installing Chromium. We'll be using the installed package.
@@ -27,15 +28,20 @@ RUN addgroup -g 1001 -S nodejs && \
 # Copy package files first for better caching
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Debug: Check if package.json exists
+RUN ls -la && cat package.json
+
+# Install dependencies with better error handling
+RUN npm install --production --no-audit --no-fund && \
+    npm cache clean --force
 
 # Copy application code
 COPY --chown=nextjs:nodejs . .
 
 # Create data directories with proper permissions
 RUN mkdir -p data/scans data/templates data/cache && \
-    chown -R nextjs:nodejs data/
+    chown -R nextjs:nodejs data/ && \
+    chown -R nextjs:nodejs /app
 
 # Switch to non-root user
 USER nextjs
