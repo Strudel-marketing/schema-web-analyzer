@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  schema-analyzer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: schema-web-analyzer
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+      - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+    volumes:
+      - ./data:/app/data:rw
+      - /tmp:/tmp:rw
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    networks:
+      - schema-network
+
+networks:
+  schema-network:
+    driver: bridge
+
+volumes:
+  schema-data:
+    driver: local
