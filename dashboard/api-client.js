@@ -1,174 +1,289 @@
-// dashboard/api-client.js - Schema Web Analyzer API Client
-class APIClient {
+// API Client for Schema Web Analyzer Dashboard
+
+class SchemaAPIClient {
     constructor() {
-        this.baseURL = this.getBaseURL();
+        this.baseURL = window.location.origin;
         this.timeout = 30000; // 30 seconds default
+        this.debug = false;
     }
 
-    /**
-     * Get base URL for API calls
-     */
-    getBaseURL() {
-        // In production, use relative URLs
-        // In development, you might need to specify the full URL
-        return window.location.origin;
+    setConfig(config) {
+        if (config.timeout) this.timeout = config.timeout;
+        if (config.debug !== undefined) this.debug = config.debug;
     }
 
-    /**
-     * Make HTTP request with error handling
-     */
+    log(...args) {
+        if (this.debug) {
+            console.log('[API Client]', ...args);
+        }
+    }
+
+    error(...args) {
+        console.error('[API Client]', ...args);
+    }
+
+    // Generic API request method
     async request(endpoint, options = {}) {
         const url = `${this.baseURL}${endpoint}`;
         
         const config = {
-            method: 'GET',
+            timeout: this.timeout,
             headers: {
                 'Content-Type': 'application/json',
                 ...options.headers
             },
-            timeout: this.timeout,
             ...options
         };
 
+        this.log(`Making request to: ${url}`, config);
+
         try {
-            console.log(`🌐 API Request: ${config.method} ${endpoint}`);
-            
+            // Create abort controller for timeout
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), config.timeout);
-            
+
             const response = await fetch(url, {
                 ...config,
                 signal: controller.signal
             });
-            
+
             clearTimeout(timeoutId);
-            
+
             if (!response.ok) {
-                let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                const errorText = await response.text();
+                let errorData;
                 
                 try {
-                    const errorData = await response.json();
-                    errorMessage = errorData.error || errorData.message || errorMessage;
+                    errorData = JSON.parse(errorText);
                 } catch (e) {
-                    // If response is not JSON, use status text
+                    errorData = { error: errorText };
                 }
                 
-                throw new Error(errorMessage);
+                throw new APIError(
+                    errorData.error || `HTTP ${response.status}`,
+                    response.status,
+                    errorData
+                );
             }
-            
+
             const data = await response.json();
-            console.log(`✅ API Response: ${config.method} ${endpoint}`, data);
-            
+            this.log('Response received:', data);
             return data;
-            
+
         } catch (error) {
-            console.error(`❌ API Error: ${config.method} ${endpoint}`, error);
-            
             if (error.name === 'AbortError') {
-                throw new Error('Request timeout - please try again');
+                throw new APIError('Request timeout', 408);
             }
             
-            throw error;
+            if (error instanceof APIError) {
+                throw error;
+            }
+            
+            this.error('Request failed:', error);
+            throw new APIError(error.message, 0);
         }
     }
 
-    /**
-     * Analyze single URL
-     */
-    async analyze(url, options = {}) {
-        return this.request('/api/analyze', {
+    // Health check
+    async checkHealth() {
+        try {
+            const result = await this.request('/api/health');
+            return {
+                status: 'online',
+                data: result
+            };
+        } catch (error) {
+            return {
+                status: 'offline',
+                error: error.message
+            };
+        }
+    }
+
+    // Quick health check with URL
+    async quickHealthCheck(url) {
+        if (!url) {
+            throw new APIError('URL is required for health check');
+        }
+
+        return await this.request(`/api/health-check?url=${encodeURIComponent(url)}`);
+    }
+
+    // Single page analysis
+    async analyzePage(url, options = {}) {
+        if (!url) {
+            throw new APIError('URL is required for analysis');
+        }
+
+        this.log('Starting page analysis for:', url);
+
+        const requestData = {
+            url: url,
+            options: {
+                deep_scan: options.deepScan || false,
+                include_recommendations: options.recommendations || false,
+                check_consistency: options.consistencyCheck || false,
+                analyze_entities: options.entityAnalysis || false
+            }
+        };
+
+        return await this.request('/api/analyze', {
             method: 'POST',
-            body: JSON.stringify({
-                url,
-                options
-            })
+            body: JSON.stringify(requestData)
         });
     }
 
-    /**
-     * Start site-wide scan
-     */
+    // Site-wide scanning
     async scanSite(startUrl, options = {}) {
-        return this.request('/api/scan-site', {
+        if (!startUrl) {
+            throw new APIError('Start URL is required for site scan');
+        }
+
+        this.log('Starting site scan for:', startUrl);
+
+        const requestData = {
+            start_url: startUrl,
+            options: {
+                max_pages: options.maxPages || 25,
+                include_sitemaps: options.includeSitemaps || true,
+                crawl_depth: options.crawlDepth || 3,
+                follow_external: false
+            }
+        };
+
+        return await this.request('/api/scan-site', {
             method: 'POST',
-            body: JSON.stringify({
-                start_url: startUrl,
-                options
-            })
+            body: JSON.stringify(requestData)
         });
     }
 
-    /**
-     * Get scan progress
-     */
-    async getProgress(scanId) {
-        return this.request(`/api/progress/${scanId}`);
+    // Get scan results
+    async getScanResults(scanId) {
+        if (!scanId) {
+            throw new APIError('Scan ID is required');
+        }
+
+        return await this.request(`/api/results/${scanId}`);
     }
 
-    /**
-     * Get scan results
-     */
-    async getResults(scanId) {
-        return this.request(`/api/results/${scanId}`);
-    }
-
-    /**
-     * Get entity relationship graph
-     */
+    // Get entity graph
     async getEntityGraph(scanId) {
-        return this.request(`/api/entity-graph/${scanId}`);
+        if (!scanId) {
+            throw new APIError('Scan ID is required for entity graph');
+        }
+
+        return await this.request(`/api/entity-graph/${scanId}`);
     }
 
-    /**
-     * Quick health check
-     */
-    async healthCheck(url) {
-        return this.request(`/api/health-check?url=${encodeURIComponent(url)}`);
-    }
+    // Poll scan progress (for site scans)
+    async pollScanProgress(scanId, onProgress, interval = 2000) {
+        if (!scanId) {
+            throw new APIError('Scan ID is required');
+        }
 
-    /**
-     * Get recent scans
-     */
-    async getRecentScans(limit = 10, offset = 0) {
-        return this.request(`/api/scans?limit=${limit}&offset=${offset}`);
-    }
+        this.log('Starting poll for scan:', scanId);
 
-    /**
-     * Delete scan
-     */
-    async deleteScan(scanId) {
-        return this.request(`/api/scans/${scanId}`, {
-            method: 'DELETE'
+        return new Promise((resolve, reject) => {
+            const poll = async () => {
+                try {
+                    const result = await this.getScanResults(scanId);
+                    
+                    if (onProgress) {
+                        onProgress(result);
+                    }
+
+                    if (result.status === 'completed') {
+                        this.log('Scan completed:', scanId);
+                        resolve(result);
+                    } else if (result.status === 'failed') {
+                        reject(new APIError('Scan failed', 500, result));
+                    } else {
+                        // Continue polling
+                        setTimeout(poll, interval);
+                    }
+                } catch (error) {
+                    this.error('Poll error:', error);
+                    reject(error);
+                }
+            };
+
+            poll();
         });
     }
 
-    /**
-     * Stop active scan
-     */
-    async stopScan(scanId) {
-        return this.request(`/api/scans/${scanId}/stop`, {
-            method: 'POST'
-        });
+    // Validate URL format
+    isValidURL(string) {
+        try {
+            const url = new URL(string);
+            return url.protocol === 'http:' || url.protocol === 'https:';
+        } catch (_) {
+            return false;
+        }
     }
 
-    /**
-     * Get schema templates
-     */
-    async getTemplates() {
-        return this.request('/api/templates');
+    // Format API errors for display
+    formatError(error) {
+        if (error instanceof APIError) {
+            switch (error.status) {
+                case 400:
+                    return `Invalid request: ${error.message}`;
+                case 404:
+                    return `Resource not found: ${error.message}`;
+                case 408:
+                    return `Request timeout. Try again or increase timeout in settings.`;
+                case 429:
+                    return `Rate limit exceeded. Please wait a moment before trying again.`;
+                case 500:
+                    return `Server error: ${error.message}`;
+                default:
+                    return error.message;
+            }
+        }
+        
+        return error.message || 'Unknown error occurred';
     }
 
-    /**
-     * Get API documentation
-     */
-    async getDocs() {
-        return this.request('/api/docs');
+    // Get recent scans (if available)
+    async getRecentScans(limit = 10) {
+        try {
+            return await this.request(`/api/recent-scans?limit=${limit}`);
+        } catch (error) {
+            // Not all implementations may have this endpoint
+            this.log('Recent scans not available:', error.message);
+            return { scans: [] };
+        }
     }
 
-    /**
-     * Set request timeout
-     */
-    setTimeout(timeout) {
-        this.timeout = timeout;
+    // Export results
+    async exportResults(scanId, format = 'json') {
+        if (!scanId) {
+            throw new APIError('Scan ID is required for export');
+        }
+
+        const response = await fetch(`${this.baseURL}/api/export/${scanId}?format=${format}`);
+        
+        if (!response.ok) {
+            throw new APIError(`Export failed: ${response.statusText}`, response.status);
+        }
+
+        return response.blob();
     }
+}
+
+// Custom error class for API errors
+class APIError extends Error {
+    constructor(message, status = 0, data = null) {
+        super(message);
+        this.name = 'APIError';
+        this.status = status;
+        this.data = data;
+    }
+}
+
+// Create global instance
+window.schemaAPI = new SchemaAPIClient();
+
+// Export for module systems
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { SchemaAPIClient, APIError };
 }
