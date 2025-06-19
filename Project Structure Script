@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# Schema Web Analyzer - Project Structure Creator
+echo "🚀 Creating Schema Web Analyzer project structure..."
+
+# Create main directories
+mkdir -p schema-web-analyzer/{api,dashboard,data/{scans,templates,cache},assets/{icons,images},docs,chrome-extension-source}
+
+# Create API structure
+mkdir -p schema-web-analyzer/api/{controllers,middleware,services,utils,routes}
+
+# Create Dashboard structure  
+mkdir -p schema-web-analyzer/dashboard/{components,assets/{css,js},templates}
+
+# Create basic files
+cd schema-web-analyzer
+
+# API files
+touch api/{server.js,config.js}
+touch api/controllers/{analyzer.js,scanner.js,insights.js}
+touch api/middleware/{auth.js,validation.js,errorHandler.js}
+touch api/services/{crawler.js,schemaAnalyzer.js,entityMapper.js,consistencyAnalyzer.js}
+touch api/utils/{helpers.js,logger.js}
+touch api/routes/{api.js,health.js}
+
+# Dashboard files
+touch dashboard/{index.html,app.js,api-client.js,components.js,visualizations.js}
+touch dashboard/assets/css/{style.css,components.css}
+touch dashboard/assets/js/{utils.js,config.js}
+
+# Data templates
+touch data/templates/{organization.json,person.json,product.json,webpage.json}
+touch data/{index.json,config.json}
+
+# Documentation
+touch docs/{README.md,API.md,SETUP.md,DEPLOYMENT.md}
+
+# Configuration files
+touch {.env.example,.gitignore,README.md}
+
+echo "✅ Project structure created successfully!"
+echo "📁 Navigate to schema-web-analyzer/ and run 'npm install'"
+
+# Show structure
+echo ""
+echo "📋 Created structure:"
+tree -a -I 'node_modules|.git' .
