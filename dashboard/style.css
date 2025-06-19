@@ -1,0 +1,337 @@
+/* Custom styles for Schema Web Analyzer Dashboard */
+
+/* Tab buttons */
+.tab-button {
+    @apply px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent;
+    transition: all 0.2s ease;
+}
+
+.tab-button.active {
+    @apply text-blue-600 border-blue-600;
+}
+
+/* Analysis panels */
+.analysis-panel {
+    transition: opacity 0.3s ease;
+}
+
+.analysis-panel.hidden {
+    display: none;
+}
+
+/* Filter buttons */
+.filter-button, .graph-filter-button {
+    @apply px-3 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200;
+    transition: all 0.2s ease;
+}
+
+.filter-button.active, .graph-filter-button.active {
+    @apply bg-blue-100 text-blue-700;
+}
+
+/* Modal styles */
+.modal {
+    @apply fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50;
+}
+
+.modal.show {
+    @apply flex;
+}
+
+.modal-content {
+    @apply bg-white rounded-lg p-6 m-4 max-w-2xl w-full max-h-screen overflow-y-auto;
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+.modal-close {
+    @apply text-gray-400 hover:text-gray-600 text-2xl font-bold leading-none;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Recommendation items */
+.recommendation-item {
+    @apply border rounded-lg p-4 transition-all duration-200;
+}
+
+.recommendation-item.high {
+    @apply border-red-200 bg-red-50;
+}
+
+.recommendation-item.medium {
+    @apply border-yellow-200 bg-yellow-50;
+}
+
+.recommendation-item.low {
+    @apply border-blue-200 bg-blue-50;
+}
+
+.recommendation-item.success {
+    @apply border-green-200 bg-green-50;
+}
+
+/* Priority badges */
+.priority-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.priority-badge.high {
+    @apply bg-red-100 text-red-800;
+}
+
+.priority-badge.medium {
+    @apply bg-yellow-100 text-yellow-800;
+}
+
+.priority-badge.low {
+    @apply bg-blue-100 text-blue-800;
+}
+
+.priority-badge.success {
+    @apply bg-green-100 text-green-800;
+}
+
+/* Code blocks */
+.code-block {
+    @apply bg-gray-900 text-gray-100 p-4 rounded-lg text-sm font-mono overflow-x-auto;
+    border-left: 4px solid #3b82f6;
+}
+
+.code-block.fix {
+    border-left-color: #10b981;
+}
+
+.code-block.warning {
+    border-left-color: #f59e0b;
+}
+
+.code-block.error {
+    border-left-color: #ef4444;
+}
+
+/* Schema breakdown items */
+.schema-item {
+    @apply flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50;
+    transition: background-color 0.2s ease;
+}
+
+.schema-type {
+    @apply font-medium text-gray-900;
+}
+
+.schema-count {
+    @apply text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full;
+}
+
+/* Consistency analysis items */
+.consistency-item {
+    @apply p-3 border rounded-lg;
+}
+
+.consistency-item.good {
+    @apply border-green-200 bg-green-50;
+}
+
+.consistency-item.warning {
+    @apply border-yellow-200 bg-yellow-50;
+}
+
+.consistency-item.error {
+    @apply border-red-200 bg-red-50;
+}
+
+/* Entity graph styles */
+#entityVisualization {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.node-label {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    fill: #374151;
+    pointer-events: none;
+}
+
+.edge-line {
+    stroke: #d1d5db;
+    stroke-width: 2;
+    transition: all 0.3s ease;
+}
+
+.edge-line.connected {
+    stroke: #10b981;
+}
+
+.edge-line.broken {
+    stroke: #ef4444;
+    stroke-dasharray: 5,5;
+}
+
+.node-circle {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.node-circle:hover {
+    stroke-width: 3;
+    filter: brightness(1.1);
+}
+
+/* Loading animations */
+@keyframes pulse-slow {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.loading-pulse {
+    animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .modal-content {
+        @apply m-2 max-w-none;
+    }
+    
+    .grid.grid-cols-1.md\\:grid-cols-4 {
+        @apply grid-cols-2;
+    }
+    
+    .filter-button, .graph-filter-button {
+        @apply px-2 py-1 text-xs;
+    }
+}
+
+/* Accessibility improvements */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Focus styles */
+button:focus,
+input:focus,
+select:focus {
+    @apply outline-none ring-2 ring-blue-500 ring-offset-2;
+}
+
+/* Copy button animation */
+.copy-success {
+    @apply bg-green-600;
+    animation: copySuccess 2s ease-in-out;
+}
+
+@keyframes copySuccess {
+    0% { background-color: #3b82f6; }
+    20% { background-color: #10b981; }
+    100% { background-color: #3b82f6; }
+}
+
+/* Status indicators */
+.status-indicator {
+    @apply inline-flex items-center;
+}
+
+.status-dot {
+    @apply w-2 h-2 rounded-full mr-2;
+}
+
+.status-dot.online {
+    @apply bg-green-500;
+    animation: pulse 2s infinite;
+}
+
+.status-dot.offline {
+    @apply bg-red-500;
+}
+
+.status-dot.warning {
+    @apply bg-yellow-500;
+}
+
+/* Progress bars */
+.progress-bar {
+    @apply bg-gray-200 rounded-full h-2 overflow-hidden;
+}
+
+.progress-fill {
+    @apply h-full bg-blue-600 transition-all duration-300 ease-out;
+}
+
+/* Tooltips */
+.tooltip {
+    @apply absolute z-50 px-2 py-1 text-xs text-white bg-gray-900 rounded shadow-lg;
+    pointer-events: none;
+}
+
+.tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #1f2937 transparent transparent transparent;
+}
+
+/* Custom scrollbars */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Print styles */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    
+    .modal {
+        display: none !important;
+    }
+    
+    .bg-gray-50 {
+        background: white !important;
+    }
+    
+    .shadow-sm,
+    .shadow-lg {
+        box-shadow: none !important;
+        border: 1px solid #e5e7eb !important;
+    }
+}
