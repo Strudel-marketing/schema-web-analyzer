@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schema Web Analyzer - Advanced Schema Markup Analysis</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- D3.js for visualizations -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <!-- Custom styles -->
+    <link rel="stylesheet" href="assets/css/style.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="assets/icons/logo.svg">
+    
+    <meta name="description" content="Advanced Schema markup analyzer with entity relationships and consistency checking">
+    <meta name="keywords" content="schema, SEO, structured data, JSON-LD, markup analyzer">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <h1 class="text-2xl font-bold text-gray-900">
+                            🌐 Schema Web Analyzer
+                        </h1>
+                    </div>
+                    <div class="hidden md:block ml-10">
+                        <div class="flex items-baseline space-x-4">
+                            <span class="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                v1.0.0
+                            </span>
+                            <span class="text-sm text-gray-500">
+                                Advanced Schema Analysis & SEO Optimization
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="settingsBtn" class="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                    </button>
+                    <button id="helpBtn" class="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <!-- URL Analysis Panel -->
+        <div class="px-4 py-6 sm:px-0">
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-semibold text-gray-900">🔍 URL Analysis</h2>
+                    <div class="flex space-x-2">
+                        <button id="quickCheckBtn" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors">
+                            Quick Check
+                        </button>
+                        <button id="deepAnalysisBtn" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors">
+                            Deep Analysis
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="space-y-4">
+                    <!-- URL Input -->
+                    <div class="flex space-x-4">
+                        <div class="flex-1">
+                            <input 
+                                type="url" 
+                                id="urlInput" 
+                                placeholder="https://example.com" 
+                                class="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                autocomplete="url"
+                            >
+                        </div>
+                        <button 
+                            id="analyzeBtn" 
+                            class="px-8 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        >
+                            🚀 Analyze
+                        </button>
+                    </div>
+                    
+                    <!-- Analysis Options -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-md">
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" id="deepScan" checked class="rounded text-blue-600">
+                            <span class="text-sm text-gray-700">Deep Scan</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" id="includeEntities" checked class="rounded text-blue-600">
+                            <span class="text-sm text-gray-700">Entity Analysis</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" id="includeRecommendations" checked class="rounded text-blue-600">
+                            <span class="text-sm text-gray-700">Recommendations</span>
+                        </label>
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" id="checkConsistency" checked class="rounded text-blue-600">
+                            <span class="text-sm text-gray-700">Consistency Check</span>
+                        </label>
+                    </div>
+
+                    <!-- Site-wide Scan Option -->
+                    <div class="border-t pt-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="text-sm font-medium text-gray-900">Site-wide Analysis</h3>
+                                <p class="text-sm text-gray-500">Analyze multiple pages for comprehensive insights</p>
+                            </div>
+                            <button 
+                                id="siteAnalysisBtn" 
+                                class="px-6 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+                            >
+                                🗺️ Scan Site
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="hidden">
+            <div class="bg-white rounded-lg shadow-lg p-8 mb-8">
+                <div class="flex items-center justify-center space-x-4">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900" id="loadingTitle">Analyzing...</h3>
+                        <p class="text-sm text-gray-500" id="loadingMessage">Please wait while we analyze your website</p>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div id="progressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2" id="progressText">0%</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Container -->
+        <div id="resultsContainer" class="hidden">
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 bg-blue-100 rounded-md flex items-center justify-center">
+                                <span class="text-blue-600 text-lg">📊</span>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500">SEO Score</p>
+                            <p class="text-2xl font-semibold text-gray-900" id="seoScore">--</p>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <span class="text-sm font-medium" id="seoGrade">--</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 bg-green-100 rounded-md flex items-center justify-center">
+                                <span class="text-green-600 text-lg">🕸️</span>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500">Entities Found</p>
+                            <p class="text-2xl font-semibold text-gray-900" id="entitiesCount">--</p>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <span class="text-sm text-gray-500" id="entityTypes">-- types</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 bg-yellow-100 rounded-md flex items-center justify-center">
+                                <span class="text-yellow-600 text-lg">⚠️</span>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500">Issues Found</p>
+                            <p class="text-2xl font-semibold text-gray-900" id="issuesCount">--</p>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <span class="text-sm" id="issuesSeverity">--</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 bg-purple-100 rounded-md flex items-center justify-center">
+                                <span class="text-purple-600 text-lg">🔗</span>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500">Consistency</p>
+                            <p class="text-2xl font-semibold text-gray-900" id="consistencyScore">--</p>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <span class="text-sm" id="consistencyGrade">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Results Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Issues & Recommendations -->
+                <div class="bg-white rounded-lg shadow-lg">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-medium text-gray-900">📋 Issues & Recommendations
