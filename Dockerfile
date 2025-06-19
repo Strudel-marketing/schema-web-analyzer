@@ -1,6 +1,7 @@
+# Use Node.js 18 Alpine for smaller image size
 FROM node:18-alpine
 
-# Install Chrome dependencies for Puppeteer
+# Install system dependencies for Puppeteer and healthcheck
 RUN apk add --no-cache \
     chromium \
     nss \
@@ -8,34 +9,43 @@ RUN apk add --no-cache \
     freetype-dev \
     harfbuzz \
     ca-certificates \
-    ttf-freefont
+    ttf-freefont \
+    curl \
+    && rm -rf /var/cache/apk/*
 
-# Set Puppeteer to use installed Chromium
+# Tell Puppeteer to skip installing Chromium. We'll be using the installed package.
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
+# Create app directory
 WORKDIR /app
 
-# Copy package files
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001
+
+# Copy package files first for better caching
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm ci --only=production && npm cache clean --force
 
 # Copy application code
-COPY . .
+COPY --chown=nextjs:nodejs . .
 
-# Create necessary directories
-RUN mkdir -p data/scans data/cache data/templates logs
+# Create data directories with proper permissions
+RUN mkdir -p data/scans data/templates data/cache && \
+    chown -R nextjs:nodejs data/
 
-# Set permissions
-RUN chown -R node:node /app
-USER node
+# Switch to non-root user
+USER nextjs
 
+# Expose port
 EXPOSE 3000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node health-check.js || exit 1
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:3000/api/health || exit 1
 
+# Start the application
 CMD ["npm", "start"]
