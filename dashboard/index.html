@@ -3,66 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Schema Web Analyzer - Advanced Analysis</title>
+    <title>Schema Web Analyzer - Debug Mode</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .loading-spinner {
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-        .schema-item {
-            transition: all 0.3s ease;
-        }
-        .schema-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        .recommendation-item {
-            border-left: 4px solid;
-        }
-        .recommendation-item.high { border-left-color: #ef4444; background: #fef2f2; }
-        .recommendation-item.medium { border-left-color: #f59e0b; background: #fffbeb; }
-        .recommendation-item.low { border-left-color: #3b82f6; background: #eff6ff; }
-        .code-block {
-            background: #1f2937;
-            color: #10b981;
-            font-family: 'Monaco', 'Consolas', monospace;
-        }
+        .loading-spinner { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .debug-info { font-family: 'Monaco', 'Consolas', monospace; font-size: 12px; }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
     <div class="max-w-6xl mx-auto py-8 px-4">
-        <!-- Header -->
+        <!-- Header with Debug Info -->
         <header class="text-center mb-8">
             <div class="flex items-center justify-center space-x-3 mb-4">
                 <div class="text-4xl">🕸️</div>
                 <h1 class="text-4xl font-bold text-gray-900">Schema Web Analyzer</h1>
+                <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm">DEBUG MODE</span>
             </div>
-            <p class="text-gray-600">Advanced Schema.org markup analysis with @id consistency checking</p>
+            <p class="text-gray-600">Advanced Schema.org markup analysis with debug information</p>
             <div class="mt-4 flex justify-center space-x-4 text-sm text-gray-500">
                 <span id="apiStatus" class="flex items-center">
-                    <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                    API Ready
+                    <span class="w-2 h-2 bg-gray-500 rounded-full mr-2"></span>
+                    Checking API...
                 </span>
                 <span>•</span>
-                <span>Powered by Puppeteer</span>
-                <span>•</span>
-                <span>Real-time Analysis</span>
+                <span id="methodStatus">Method: Unknown</span>
             </div>
         </header>
 
+        <!-- Debug Panel -->
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <h3 class="font-semibold text-yellow-800 mb-2">🐛 Debug Information</h3>
+            <div id="debugInfo" class="debug-info text-yellow-700 space-y-1">
+                <div>Checking system status...</div>
+            </div>
+        </div>
+
+        <!-- Quick Tests -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h3 class="text-lg font-semibold mb-4">🧪 Quick Tests</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button id="testHealthBtn" class="p-3 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200">
+                    Test API Health
+                </button>
+                <button id="testFetchBtn" class="p-3 bg-green-100 text-green-800 rounded-lg hover:bg-green-200">
+                    Test Simple Fetch
+                </button>
+                <button id="testPuppeteerBtn" class="p-3 bg-purple-100 text-purple-800 rounded-lg hover:bg-purple-200">
+                    Test Full Analysis
+                </button>
+            </div>
+        </div>
+
         <!-- Analysis Input -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-xl font-semibold">URL Analysis</h2>
-                <div class="flex space-x-2">
-                    <button id="quickAnalysisBtn" class="tab-btn active">Quick Analysis</button>
-                    <button id="deepAnalysisBtn" class="tab-btn">Deep Analysis</button>
-                </div>
-            </div>
+            <h2 class="text-xl font-semibold mb-4">URL Analysis</h2>
             
             <div class="flex space-x-4 mb-4">
                 <input 
@@ -70,7 +65,7 @@
                     id="urlInput" 
                     placeholder="https://example.com"
                     class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    value="https://schema.org"
+                    value="https://strudel.marketing/"
                 >
                 <button 
                     id="analyzeBtn"
@@ -83,16 +78,12 @@
 
             <div class="flex flex-wrap gap-4 text-sm">
                 <label class="flex items-center space-x-2">
-                    <input type="checkbox" id="deepScan" class="rounded">
-                    <span>Deep Schema Analysis</span>
+                    <input type="checkbox" id="verboseLogging" checked class="rounded">
+                    <span>Verbose Logging</span>
                 </label>
                 <label class="flex items-center space-x-2">
-                    <input type="checkbox" id="consistencyCheck" checked class="rounded">
-                    <span>@id Consistency Check</span>
-                </label>
-                <label class="flex items-center space-x-2">
-                    <input type="checkbox" id="entityAnalysis" class="rounded">
-                    <span>Entity Relationship Analysis</span>
+                    <input type="checkbox" id="showRawData" class="rounded">
+                    <span>Show Raw Data</span>
                 </label>
             </div>
         </div>
@@ -102,18 +93,27 @@
             <div class="text-center">
                 <div class="loading-spinner w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full mx-auto mb-4"></div>
                 <h3 class="text-lg font-semibold text-gray-900 mb-2">Analyzing Schema Markup</h3>
-                <p id="loadingMessage" class="text-gray-600">Crawling page and extracting schemas...</p>
-                <div class="mt-4 bg-gray-200 rounded-full h-2 max-w-md mx-auto">
-                    <div id="progressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                <p id="loadingMessage" class="text-gray-600">Starting analysis...</p>
+                <div class="mt-4">
+                    <div id="loadingLogs" class="debug-info text-left bg-gray-100 p-3 rounded max-h-32 overflow-y-auto"></div>
                 </div>
             </div>
         </div>
 
         <!-- Results Section -->
         <div id="resultsSection" class="hidden">
+            <!-- Method Info -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div class="flex items-center space-x-2">
+                    <span class="text-blue-800 font-semibold">Analysis Method:</span>
+                    <span id="analysisMethod" class="text-blue-600">Unknown</span>
+                    <span id="analysisTime" class="text-blue-500 text-sm"></span>
+                </div>
+            </div>
+
             <!-- Summary Cards -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <div class="bg-white rounded-lg shadow-md p-6 schema-item">
+                <div class="bg-white rounded-lg shadow-md p-6">
                     <div class="flex items-center">
                         <div class="p-3 bg-blue-100 rounded-lg">
                             <span class="text-2xl">📊</span>
@@ -126,7 +126,7 @@
                     </div>
                 </div>
 
-                <div class="bg-white rounded-lg shadow-md p-6 schema-item">
+                <div class="bg-white rounded-lg shadow-md p-6">
                     <div class="flex items-center">
                         <div class="p-3 bg-green-100 rounded-lg">
                             <span class="text-2xl">🕸️</span>
@@ -139,7 +139,7 @@
                     </div>
                 </div>
 
-                <div class="bg-white rounded-lg shadow-md p-6 schema-item">
+                <div class="bg-white rounded-lg shadow-md p-6">
                     <div class="flex items-center">
                         <div class="p-3 bg-purple-100 rounded-lg">
                             <span class="text-2xl">🔗</span>
@@ -152,7 +152,7 @@
                     </div>
                 </div>
 
-                <div class="bg-white rounded-lg shadow-md p-6 schema-item">
+                <div class="bg-white rounded-lg shadow-md p-6">
                     <div class="flex items-center">
                         <div class="p-3 bg-yellow-100 rounded-lg">
                             <span class="text-2xl">⚠️</span>
@@ -166,42 +166,28 @@
                 </div>
             </div>
 
-            <!-- Detailed Results -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <!-- Recommendations -->
-                <div class="bg-white rounded-lg shadow-md p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-semibold">🎯 Recommendations</h3>
-                        <div class="flex space-x-2">
-                            <button class="filter-btn active" data-filter="all">All</button>
-                            <button class="filter-btn" data-filter="high">High</button>
-                            <button class="filter-btn" data-filter="medium">Medium</button>
-                        </div>
-                    </div>
-                    <div id="recommendationsList" class="space-y-4">
-                        <div class="text-center py-8 text-gray-500">
-                            No recommendations yet
-                        </div>
-                    </div>
-                </div>
+            <!-- Raw Data (if enabled) -->
+            <div id="rawDataSection" class="hidden bg-white rounded-lg shadow-md p-6 mb-8">
+                <h3 class="text-lg font-semibold mb-4">🔍 Raw Response Data</h3>
+                <pre id="rawData" class="debug-info bg-gray-100 p-4 rounded overflow-x-auto text-xs"></pre>
+            </div>
 
-                <!-- Schema Details -->
-                <div class="bg-white rounded-lg shadow-md p-6">
-                    <h3 class="text-lg font-semibold mb-4">📋 Schema Breakdown</h3>
-                    <div id="schemaBreakdown" class="space-y-3">
-                        <div class="text-center py-8 text-gray-500">
-                            No schemas detected
-                        </div>
+            <!-- Recommendations -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h3 class="text-lg font-semibold mb-4">🎯 Recommendations</h3>
+                <div id="recommendationsList" class="space-y-4">
+                    <div class="text-center py-8 text-gray-500">
+                        No recommendations yet
                     </div>
                 </div>
             </div>
 
-            <!-- Consistency Analysis -->
-            <div class="mt-8 bg-white rounded-lg shadow-md p-6">
-                <h3 class="text-lg font-semibold mb-4">🔗 @id Consistency Analysis</h3>
-                <div id="consistencyDetails" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Schema Details -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold mb-4">📋 Found Schemas</h3>
+                <div id="schemaList" class="space-y-4">
                     <div class="text-center py-8 text-gray-500">
-                        No consistency data available
+                        No schemas found
                     </div>
                 </div>
             </div>
@@ -214,8 +200,12 @@
                 <div>
                     <h3 class="text-lg font-semibold text-red-800 mb-2">Analysis Failed</h3>
                     <p id="errorMessage" class="text-red-700 mb-4">An error occurred during analysis.</p>
-                    <button id="retryBtn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                    <pre id="errorDetails" class="debug-info bg-red-100 p-3 rounded text-red-800 text-xs mb-4 hidden"></pre>
+                    <button id="retryBtn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 mr-2">
                         🔄 Retry Analysis
+                    </button>
+                    <button id="showErrorBtn" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                        Show Details
                     </button>
                 </div>
             </div>
@@ -223,8 +213,9 @@
     </div>
 
     <script>
-        class SchemaAnalyzer {
+        class DebugAnalyzer {
             constructor() {
+                this.verboseLogging = true;
                 this.currentResults = null;
                 this.init();
             }
@@ -234,63 +225,180 @@
                 this.checkAPIHealth();
             }
 
+            log(message, data = null) {
+                console.log(`[Debug] ${message}`, data || '');
+                if (this.verboseLogging) {
+                    this.updateDebugInfo(message);
+                    this.updateLoadingLogs(message);
+                }
+            }
+
+            updateDebugInfo(message) {
+                const debugInfo = document.getElementById('debugInfo');
+                if (debugInfo) {
+                    const div = document.createElement('div');
+                    div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+                    debugInfo.appendChild(div);
+                    // Keep only last 10 messages
+                    while (debugInfo.children.length > 10) {
+                        debugInfo.removeChild(debugInfo.firstChild);
+                    }
+                }
+            }
+
+            updateLoadingLogs(message) {
+                const loadingLogs = document.getElementById('loadingLogs');
+                if (loadingLogs && !loadingLogs.parentElement.classList.contains('hidden')) {
+                    const div = document.createElement('div');
+                    div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+                    loadingLogs.appendChild(div);
+                    loadingLogs.scrollTop = loadingLogs.scrollHeight;
+                }
+            }
+
             attachEventListeners() {
                 document.getElementById('analyzeBtn').addEventListener('click', () => this.analyzeURL());
+                document.getElementById('testHealthBtn').addEventListener('click', () => this.testHealth());
+                document.getElementById('testFetchBtn').addEventListener('click', () => this.testFetch());
+                document.getElementById('testPuppeteerBtn').addEventListener('click', () => this.analyzeURL());
+                document.getElementById('retryBtn').addEventListener('click', () => this.analyzeURL());
+                document.getElementById('showErrorBtn').addEventListener('click', () => this.toggleErrorDetails());
+                
+                document.getElementById('verboseLogging').addEventListener('change', (e) => {
+                    this.verboseLogging = e.target.checked;
+                });
+
                 document.getElementById('urlInput').addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') this.analyzeURL();
-                });
-                document.getElementById('retryBtn').addEventListener('click', () => this.analyzeURL());
-
-                // Filter buttons
-                document.querySelectorAll('.filter-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                        e.target.classList.add('active');
-                        this.filterRecommendations(e.target.dataset.filter);
-                    });
                 });
             }
 
             async checkAPIHealth() {
+                this.log('Checking API health...');
                 try {
                     const response = await fetch('/api/health');
                     const data = await response.json();
-                    console.log('API Health:', data);
+                    
+                    this.log('API health check completed', data);
                     
                     const statusEl = document.getElementById('apiStatus');
-                    if (data.features?.puppeteer) {
-                        statusEl.innerHTML = '<span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>Enhanced API Ready';
+                    const methodEl = document.getElementById('methodStatus');
+                    
+                    if (response.ok) {
+                        statusEl.innerHTML = '<span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>API Online';
+                        
+                        if (data.environment?.puppeteer_available) {
+                            methodEl.textContent = 'Method: Puppeteer Available';
+                        } else {
+                            methodEl.textContent = 'Method: Fetch Fallback Only';
+                        }
+                    } else {
+                        statusEl.innerHTML = '<span class="w-2 h-2 bg-red-500 rounded-full mr-2"></span>API Error';
+                        methodEl.textContent = 'Method: Unknown';
                     }
+                    
+                    this.updateDebugInfo(`API Health: ${response.ok ? 'OK' : 'ERROR'}`);
+                    
                 } catch (error) {
-                    console.error('API Health check failed:', error);
-                    const statusEl = document.getElementById('apiStatus');
-                    statusEl.innerHTML = '<span class="w-2 h-2 bg-red-500 rounded-full mr-2"></span>API Offline';
+                    this.log('API health check failed', error);
+                    document.getElementById('apiStatus').innerHTML = '<span class="w-2 h-2 bg-red-500 rounded-full mr-2"></span>Connection Failed';
+                    document.getElementById('methodStatus').textContent = 'Method: Offline';
                 }
             }
 
-            async analyzeURL() {
-                const url = document.getElementById('urlInput').value.trim();
-                if (!url) return;
+            async testHealth() {
+                this.log('Testing API health endpoint...');
+                try {
+                    const startTime = Date.now();
+                    const response = await fetch('/api/health');
+                    const data = await response.json();
+                    const duration = Date.now() - startTime;
+                    
+                    this.log(`Health test completed in ${duration}ms`, data);
+                    alert(`API Health Test:\nStatus: ${response.ok ? 'OK' : 'ERROR'}\nResponse Time: ${duration}ms\nData: ${JSON.stringify(data, null, 2)}`);
+                } catch (error) {
+                    this.log('Health test failed', error);
+                    alert(`Health Test Failed:\n${error.message}`);
+                }
+            }
 
-                this.showLoading();
+            async testFetch() {
+                this.log('Testing simple fetch method...');
+                const url = document.getElementById('urlInput').value;
+                
+                if (!url) {
+                    alert('Please enter a URL first');
+                    return;
+                }
 
                 try {
-                    const response = await fetch('/api/analyze', {
+                    const startTime = Date.now();
+                    const response = await fetch('/api/test-fetch', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ url })
                     });
+                    
+                    const data = await response.json();
+                    const duration = Date.now() - startTime;
+                    
+                    this.log(`Fetch test completed in ${duration}ms`, data);
+                    alert(`Fetch Test:\nStatus: ${response.ok ? 'OK' : 'ERROR'}\nDuration: ${duration}ms\nSchemas Found: ${data.schemas?.length || 0}`);
+                } catch (error) {
+                    this.log('Fetch test failed', error);
+                    alert(`Fetch Test Failed:\n${error.message}`);
+                }
+            }
+
+            async analyzeURL() {
+                const url = document.getElementById('urlInput').value;
+                
+                if (!url) {
+                    alert('Please enter a valid URL');
+                    document.getElementById('urlInput').focus();
+                    return;
+                }
+
+                this.showLoading();
+                this.log(`Starting analysis for: ${url}`);
+
+                const startTime = Date.now();
+
+                try {
+                    this.log('Sending analysis request...');
+                    const response = await fetch('/api/analyze', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            url: url,
+                            options: {
+                                deep_scan: true,
+                                include_recommendations: true,
+                                check_consistency: true,
+                                analyze_entities: true
+                            }
+                        })
+                    });
+
+                    this.log(`Response received: ${response.status}`);
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
 
                     const data = await response.json();
+                    const duration = Date.now() - startTime;
 
-                    if (response.ok) {
-                        this.currentResults = data;
-                        this.displayResults(data);
-                    } else {
-                        this.showError(data.error || 'Analysis failed');
-                    }
+                    this.log(`Analysis completed in ${duration}ms`, data);
+                    this.currentResults = data;
+                    
+                    this.displayResults(data, duration);
+
                 } catch (error) {
-                    this.showError('Network error: ' + error.message);
+                    this.log(`Analysis failed: ${error.message}`, error);
+                    this.showError(error);
                 }
             }
 
@@ -298,63 +406,48 @@
                 document.getElementById('loadingState').classList.remove('hidden');
                 document.getElementById('resultsSection').classList.add('hidden');
                 document.getElementById('errorState').classList.add('hidden');
+                document.getElementById('loadingLogs').innerHTML = '';
                 
-                // Simulate progress
-                let progress = 0;
-                const interval = setInterval(() => {
-                    progress += Math.random() * 15;
-                    if (progress > 90) progress = 90;
-                    document.getElementById('progressBar').style.width = progress + '%';
-                }, 200);
-
-                setTimeout(() => {
-                    clearInterval(interval);
-                    document.getElementById('progressBar').style.width = '100%';
-                }, 2000);
+                this.log('Analysis started...');
             }
 
-            showError(message) {
+            displayResults(data, duration) {
+                this.log('Displaying results...');
+                
                 document.getElementById('loadingState').classList.add('hidden');
-                document.getElementById('resultsSection').classList.add('hidden');
-                document.getElementById('errorState').classList.remove('hidden');
-                document.getElementById('errorMessage').textContent = message;
-            }
-
-            displayResults(data) {
-                document.getElementById('loadingState').classList.add('hidden');
-                document.getElementById('errorState').classList.add('hidden');
                 document.getElementById('resultsSection').classList.remove('hidden');
+                document.getElementById('errorState').classList.add('hidden');
 
-                // Update summary cards
-                this.updateSummaryCards(data.results);
+                // Method info
+                document.getElementById('analysisMethod').textContent = data.method || 'Unknown';
+                document.getElementById('analysisTime').textContent = `(${duration}ms)`;
+
+                // Summary cards
+                document.getElementById('seoScore').textContent = data.results?.seo_score?.overall || '--';
+                document.getElementById('schemaCount').textContent = data.results?.schemas?.length || 0;
                 
-                // Display recommendations
-                this.displayRecommendations(data.results.recommendations || []);
+                const uniqueTypes = new Set(data.results?.schemas?.map(s => s['@type']) || []);
+                document.getElementById('schemaTypes').textContent = `${uniqueTypes.size} types detected`;
                 
-                // Display schema breakdown
-                this.displaySchemaBreakdown(data.results.schemas || []);
-                
-                // Display consistency analysis
-                this.displayConsistencyAnalysis(data.results.consistency_analysis || {});
-            }
+                document.getElementById('consistencyScore').textContent = data.results?.consistency_analysis?.score || '--';
+                document.getElementById('issueCount').textContent = data.results?.recommendations?.length || 0;
+                document.getElementById('issueLabel').textContent = data.results?.recommendations?.length === 1 ? 'recommendation' : 'recommendations';
 
-            updateSummaryCards(results) {
-                document.getElementById('seoScore').textContent = results.seo_score?.overall || 0;
-                document.getElementById('schemaCount').textContent = results.basic_info?.schemas_found || 0;
-                document.getElementById('consistencyScore').textContent = results.consistency_analysis?.score || 0;
-                document.getElementById('issueCount').textContent = results.recommendations?.length || 0;
+                // Raw data (if enabled)
+                if (document.getElementById('showRawData').checked) {
+                    document.getElementById('rawDataSection').classList.remove('hidden');
+                    document.getElementById('rawData').textContent = JSON.stringify(data, null, 2);
+                } else {
+                    document.getElementById('rawDataSection').classList.add('hidden');
+                }
 
-                // Update labels
-                const score = results.seo_score?.overall || 0;
-                const label = score >= 80 ? 'Excellent' : score >= 60 ? 'Good' : score >= 40 ? 'Fair' : 'Poor';
-                document.getElementById('seoLabel').textContent = `${label} • out of 100`;
+                // Recommendations
+                this.displayRecommendations(data.results?.recommendations || []);
 
-                const schemas = results.schemas || [];
-                const uniqueTypes = new Set(schemas.map(s => Array.isArray(s['@type']) ? s['@type'][0] : s['@type'])).size;
-                document.getElementById('schemaTypes').textContent = `${uniqueTypes} types detected`;
+                // Schemas
+                this.displaySchemas(data.results?.schemas || []);
 
-                const issues = results.recommendations?.length || 0;
-                document.getElementById('issueLabel').textContent = issues === 0 ? 'no issues' : issues === 1 ? 'issue found' : 'issues found';
+                this.log('Results displayed successfully');
             }
 
             displayRecommendations(recommendations) {
@@ -362,251 +455,111 @@
                 
                 if (!recommendations || recommendations.length === 0) {
                     container.innerHTML = `
-                        <div class="text-center py-8 text-green-600">
-                            <div class="text-4xl mb-2">✅</div>
-                            <p class="font-semibold">Excellent! No issues found.</p>
-                            <p class="text-sm text-gray-600">Your schema markup looks great.</p>
+                        <div class="text-center py-8">
+                            <div class="text-green-500 text-4xl mb-2">✅</div>
+                            <p class="text-gray-600">Great! No critical issues found.</p>
                         </div>
                     `;
                     return;
                 }
 
-                container.innerHTML = recommendations.map(rec => `
-                    <div class="recommendation-item ${rec.priority}" data-priority="${rec.priority}">
-                        <div class="p-4">
-                            <div class="flex items-start justify-between mb-2">
-                                <div>
-                                    <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full ${this.getPriorityClass(rec.priority)}">
-                                        ${rec.priority.toUpperCase()}
-                                    </span>
-                                    <h4 class="font-semibold mt-1">${rec.type}</h4>
+                container.innerHTML = recommendations.map((rec, index) => {
+                    const priorityColor = rec.priority === 'high' ? 'red' : 
+                                        rec.priority === 'medium' ? 'yellow' : 'blue';
+                    const priorityIcon = rec.priority === 'high' ? '🔴' : 
+                                       rec.priority === 'medium' ? '🟡' : '🔵';
+
+                    return `
+                        <div class="border border-${priorityColor}-200 rounded-lg p-4 bg-${priorityColor}-50">
+                            <div class="flex items-start space-x-3">
+                                <span class="text-xl">${priorityIcon}</span>
+                                <div class="flex-1">
+                                    <h4 class="font-semibold text-${priorityColor}-800 mb-2">
+                                        ${rec.type || `Recommendation ${index + 1}`}
+                                    </h4>
+                                    <p class="text-${priorityColor}-700 mb-3">
+                                        ${rec.message || 'No message provided'}
+                                    </p>
+                                    ${rec.example ? `
+                                        <details class="mt-3">
+                                            <summary class="cursor-pointer text-${priorityColor}-600 font-medium">
+                                                Show Example Code
+                                            </summary>
+                                            <pre class="mt-2 bg-gray-900 text-green-400 p-3 rounded text-xs overflow-x-auto">${rec.example}</pre>
+                                        </details>
+                                    ` : ''}
                                 </div>
-                                <button onclick="analyzer.copyCode('${this.escapeJs(rec.example)}')" 
-                                        class="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">
-                                    📋 Copy Fix
-                                </button>
+                                <span class="text-xs font-medium text-${priorityColor}-600 bg-${priorityColor}-100 px-2 py-1 rounded">
+                                    ${rec.priority?.toUpperCase() || 'MEDIUM'}
+                                </span>
                             </div>
-                            <p class="text-sm text-gray-700 mb-3">${rec.message}</p>
-                            ${rec.example ? `
-                                <div class="code-block p-3 rounded text-xs overflow-x-auto">
-                                    <pre><code>${this.escapeHtml(rec.example)}</code></pre>
-                                </div>
-                            ` : ''}
                         </div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             }
 
-            displaySchemaBreakdown(schemas) {
-                const container = document.getElementById('schemaBreakdown');
+            displaySchemas(schemas) {
+                const container = document.getElementById('schemaList');
                 
                 if (!schemas || schemas.length === 0) {
                     container.innerHTML = `
                         <div class="text-center py-8 text-gray-500">
-                            <div class="text-2xl mb-2">📭</div>
-                            <p>No schemas detected</p>
+                            <div class="text-4xl mb-2">📭</div>
+                            <p>No schemas found on this page</p>
                         </div>
                     `;
                     return;
                 }
 
-                // Count schema types
-                const typeCounts = {};
-                schemas.forEach(schema => {
-                    const type = Array.isArray(schema['@type']) ? schema['@type'][0] : schema['@type'];
-                    if (type) {
-                        typeCounts[type] = (typeCounts[type] || 0) + 1;
-                    }
-                });
-
-                container.innerHTML = Object.entries(typeCounts)
-                    .sort((a, b) => b[1] - a[1])
-                    .map(([type, count]) => `
-                        <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
-                            <div class="flex items-center space-x-3">
-                                <span class="text-lg">${this.getSchemaIcon(type)}</span>
-                                <div>
-                                    <div class="font-medium">${type}</div>
-                                    <div class="text-xs text-gray-500">${count} instance${count === 1 ? '' : 's'}</div>
-                                </div>
-                            </div>
-                            <button onclick="analyzer.showSchemaDetails('${type}')" 
-                                    class="text-xs text-blue-600 hover:text-blue-800">
-                                View →
-                            </button>
-                        </div>
-                    `).join('');
-            }
-
-            displayConsistencyAnalysis(consistency) {
-                const container = document.getElementById('consistencyDetails');
-                
-                if (!consistency || !consistency.idGroups) {
-                    container.innerHTML = `
-                        <div class="text-center py-8 text-gray-500 col-span-2">
-                            <div class="text-2xl mb-2">🔗</div>
-                            <p>No consistency data available</p>
-                        </div>
-                    `;
-                    return;
-                }
-
-                const goodPatterns = [];
-                const issues = [];
-
-                // Analyze ID patterns
-                Object.entries(consistency.idGroups || {}).forEach(([id, instances]) => {
-                    if (id.startsWith('schema:')) {
-                        goodPatterns.push({ id, count: instances.length });
-                    } else {
-                        issues.push({ id, count: instances.length, type: 'Non-standard pattern' });
-                    }
-                });
-
-                // Add consistency issues
-                if (consistency.issues && consistency.issues.length > 0) {
-                    consistency.issues.forEach(issue => {
-                        issues.push({ id: 'Various', count: 1, type: issue });
-                    });
-                }
-
-                container.innerHTML = `
-                    <div>
-                        <h4 class="font-semibold text-green-800 mb-3">✅ Good Patterns</h4>
-                        ${goodPatterns.length > 0 ? goodPatterns.map(pattern => `
-                            <div class="p-3 bg-green-50 border border-green-200 rounded mb-2">
-                                <div class="font-medium text-green-800">${pattern.id}</div>
-                                <div class="text-xs text-green-600">Used ${pattern.count} time${pattern.count === 1 ? '' : 's'}</div>
-                            </div>
-                        `).join('') : '<p class="text-sm text-gray-500">No good patterns found</p>'}
-                    </div>
-                    <div>
-                        <h4 class="font-semibold text-red-800 mb-3">⚠️ Issues Found</h4>
-                        ${issues.length > 0 ? issues.map(issue => `
-                            <div class="p-3 bg-red-50 border border-red-200 rounded mb-2">
-                                <div class="font-medium text-red-800">${issue.type}</div>
-                                <div class="text-xs text-red-600">${issue.id !== 'Various' ? `@id: ${issue.id}` : 'Multiple issues'}</div>
-                            </div>
-                        `).join('') : '<p class="text-sm text-green-600">No issues found! 🎉</p>'}
-                    </div>
-                `;
-            }
-
-            filterRecommendations(filter) {
-                const items = document.querySelectorAll('[data-priority]');
-                items.forEach(item => {
-                    if (filter === 'all' || item.dataset.priority === filter) {
-                        item.style.display = 'block';
-                    } else {
-                        item.style.display = 'none';
-                    }
-                });
-            }
-
-            copyCode(code) {
-                navigator.clipboard.writeText(code).then(() => {
-                    // Show temporary success message
-                    const btn = event.target;
-                    const originalText = btn.textContent;
-                    btn.textContent = '✅ Copied!';
-                    btn.classList.add('bg-green-600');
-                    btn.classList.remove('bg-blue-600');
+                container.innerHTML = schemas.map((schema, index) => {
+                    const schemaType = schema['@type'] || 'Unknown';
+                    const schemaId = schema['@id'] || 'No @id';
                     
-                    setTimeout(() => {
-                        btn.textContent = originalText;
-                        btn.classList.remove('bg-green-600');
-                        btn.classList.add('bg-blue-600');
-                    }, 2000);
-                }).catch(err => {
-                    console.error('Copy failed:', err);
-                    alert('Copy failed. Please try again.');
-                });
+                    return `
+                        <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                            <div class="flex items-center justify-between mb-3">
+                                <h4 class="font-semibold text-gray-800">
+                                    Schema ${index + 1}: ${schemaType}
+                                </h4>
+                                <span class="text-xs font-mono text-gray-500 bg-gray-200 px-2 py-1 rounded">
+                                    ${schemaId}
+                                </span>
+                            </div>
+                            <details>
+                                <summary class="cursor-pointer text-blue-600 font-medium">
+                                    View Schema Details
+                                </summary>
+                                <pre class="mt-3 bg-gray-900 text-green-400 p-3 rounded text-xs overflow-x-auto">${JSON.stringify(schema, null, 2)}</pre>
+                            </details>
+                        </div>
+                    `;
+                }).join('');
             }
 
-            showSchemaDetails(type) {
-                if (!this.currentResults) return;
+            showError(error) {
+                this.log(`Showing error: ${error.message}`);
                 
-                const schemas = this.currentResults.results.schemas.filter(schema => {
-                    const schemaType = Array.isArray(schema['@type']) ? schema['@type'][0] : schema['@type'];
-                    return schemaType === type;
-                });
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('resultsSection').classList.add('hidden');
+                document.getElementById('errorState').classList.remove('hidden');
 
-                const details = schemas.map(schema => JSON.stringify(schema, null, 2)).join('\n\n---\n\n');
+                document.getElementById('errorMessage').textContent = error.message;
+                document.getElementById('errorDetails').textContent = error.stack || JSON.stringify(error, null, 2);
+            }
+
+            toggleErrorDetails() {
+                const details = document.getElementById('errorDetails');
+                details.classList.toggle('hidden');
                 
-                alert(`${type} Schemas (${schemas.length} found):\n\n${details.substring(0, 1000)}${details.length > 1000 ? '...\n\n[Truncated - Full details in browser console]' : ''}`);
-                
-                if (details.length > 1000) {
-                    console.log(`Full ${type} schemas:`, schemas);
-                }
-            }
-
-            getPriorityClass(priority) {
-                switch (priority) {
-                    case 'high': return 'bg-red-100 text-red-800';
-                    case 'medium': return 'bg-yellow-100 text-yellow-800';
-                    case 'low': return 'bg-blue-100 text-blue-800';
-                    default: return 'bg-gray-100 text-gray-800';
-                }
-            }
-
-            getSchemaIcon(type) {
-                const icons = {
-                    'Organization': '🏢',
-                    'Person': '👤',
-                    'WebPage': '📄',
-                    'WebSite': '🌐',
-                    'Article': '📝',
-                    'Product': '📦',
-                    'BreadcrumbList': '🍞',
-                    'Event': '📅',
-                    'Recipe': '🍳',
-                    'Review': '⭐',
-                    'LocalBusiness': '🏪'
-                };
-                return icons[type] || '📋';
-            }
-
-            escapeHtml(text) {
-                const div = document.createElement('div');
-                div.textContent = text;
-                return div.innerHTML;
-            }
-
-            escapeJs(text) {
-                return text.replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n');
+                const btn = document.getElementById('showErrorBtn');
+                btn.textContent = details.classList.contains('hidden') ? 'Show Details' : 'Hide Details';
             }
         }
 
-        // Initialize analyzer
-        const analyzer = new SchemaAnalyzer();
-        
-        // Make it globally available
-        window.analyzer = analyzer;
-
-        // Add CSS for tab buttons and filter buttons
-        const style = document.createElement('style');
-        style.textContent = `
-            .tab-btn, .filter-btn {
-                padding: 6px 12px;
-                text-sm;
-                font-medium;
-                border-radius: 6px;
-                border: 1px solid #d1d5db;
-                background: white;
-                color: #6b7280;
-                cursor: pointer;
-                transition: all 0.2s;
-            }
-            .tab-btn:hover, .filter-btn:hover {
-                background: #f3f4f6;
-            }
-            .tab-btn.active, .filter-btn.active {
-                background: #3b82f6;
-                color: white;
-                border-color: #3b82f6;
-            }
-        `;
-        document.head.appendChild(style);
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            window.debugAnalyzer = new DebugAnalyzer();
+        });
     </script>
 </body>
 </html>
