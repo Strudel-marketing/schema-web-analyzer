@@ -1,811 +1,755 @@
-// dashboard/app.js - Schema Web Analyzer Main Application
-class SchemaWebAnalyzer {
+// Main Application Logic for Schema Web Analyzer Dashboard
+
+class SchemaAnalyzerApp {
     constructor() {
-        this.apiClient = new APIClient();
-        this.components = new UIComponents();
-        this.visualizations = new Visualizations();
+        this.currentScanId = null;
         this.currentResults = null;
-        this.activeScan = null;
-        this.settings = this.loadSettings();
+        this.settings = {
+            timeout: 30000,
+            autoRefresh: false,
+            debugMode: false
+        };
         
         this.init();
     }
 
-    /**
-     * Initialize the application
-     */
     init() {
-        console.log('🚀 Initializing Schema Web Analyzer');
+        console.log('🚀 Initializing Schema Analyzer Dashboard');
         
-        this.attachEventListeners();
-        this.loadRecentScans();
-        this.applySettings();
+        // Load settings from localStorage
+        this.loadSettings();
         
-        // Auto-populate URL from query parameter
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlParam = urlParams.get('url');
-        if (urlParam) {
-            document.getElementById('urlInput').value = urlParam;
-        }
+        // Apply settings to API client
+        window.schemaAPI.setConfig({
+            timeout: this.settings.timeout,
+            debug: this.settings.debugMode
+        });
+
+        // Initialize UI components
+        this.initTabs();
+        this.initEventListeners();
+        this.initModals();
         
-        console.log('✅ Application initialized');
+        // Check API health
+        this.checkAPIHealth();
+        
+        // Auto-populate with example URL for demo
+        this.setExampleURL();
+        
+        console.log('✅ Dashboard initialized');
     }
 
-    /**
-     * Attach all event listeners
-     */
-    attachEventListeners() {
+    // Initialize tab switching
+    initTabs() {
+        const singleTab = document.getElementById('singleAnalysisTab');
+        const siteTab = document.getElementById('siteAnalysisTab');
+        const singlePanel = document.getElementById('singleAnalysisPanel');
+        const sitePanel = document.getElementById('siteAnalysisPanel');
+
+        singleTab?.addEventListener('click', () => {
+            singleTab.classList.add('active');
+            siteTab.classList.remove('active');
+            singlePanel.classList.remove('hidden');
+            sitePanel.classList.add('hidden');
+        });
+
+        siteTab?.addEventListener('click', () => {
+            siteTab.classList.add('active');
+            singleTab.classList.remove('active');
+            sitePanel.classList.remove('hidden');
+            singlePanel.classList.add('hidden');
+        });
+    }
+
+    // Initialize event listeners
+    initEventListeners() {
         // Main analysis buttons
-        document.getElementById('analyzeBtn').addEventListener('click', () => this.handleAnalyze());
-        document.getElementById('quickCheckBtn').addEventListener('click', () => this.handleQuickCheck());
-        document.getElementById('deepAnalysisBtn').addEventListener('click', () => this.handleDeepAnalysis());
-        document.getElementById('siteAnalysisBtn').addEventListener('click', () => this.showSiteAnalysisModal());
+        document.getElementById('analyzeBtn')?.addEventListener('click', () => {
+            this.startSinglePageAnalysis();
+        });
+
+        document.getElementById('scanSiteBtn')?.addEventListener('click', () => {
+            this.startSiteAnalysis();
+        });
 
         // URL input enter key
-        document.getElementById('urlInput').addEventListener('keypress', (e) => {
+        document.getElementById('urlInput')?.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
-                this.handleAnalyze();
+                this.startSinglePageAnalysis();
             }
         });
 
-        // Settings modal
-        document.getElementById('settingsBtn').addEventListener('click', () => this.showSettingsModal());
-        document.getElementById('closeSettings').addEventListener('click', () => this.hideSettingsModal());
-        document.getElementById('cancelSettings').addEventListener('click', () => this.hideSettingsModal());
-        document.getElementById('saveSettings').addEventListener('click', () => this.saveSettings());
+        document.getElementById('siteUrlInput')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.startSiteAnalysis();
+            }
+        });
 
-        // Help modal
-        document.getElementById('helpBtn').addEventListener('click', () => this.showHelpModal());
-        document.getElementById('closeHelp').addEventListener('click', () => this.hideHelpModal());
-        document.getElementById('closeHelpBtn').addEventListener('click', () => this.hideHelpModal());
+        // Settings button
+        document.getElementById('settingsBtn')?.addEventListener('click', () => {
+            this.showSettingsModal();
+        });
 
-        // Site analysis modal
-        document.getElementById('closeSiteAnalysis').addEventListener('click', () => this.hideSiteAnalysisModal());
-        document.getElementById('cancelSiteAnalysis').addEventListener('click', () => this.hideSiteAnalysisModal());
-        document.getElementById('startSiteAnalysis').addEventListener('click', () => this.handleSiteAnalysis());
+        // Retry button
+        document.getElementById('retryBtn')?.addEventListener('click', () => {
+            this.retryAnalysis();
+        });
 
-        // Results filters
-        document.getElementById('filterAll').addEventListener('click', () => this.filterRecommendations('all'));
-        document.getElementById('filterHigh').addEventListener('click', () => this.filterRecommendations('high'));
-        document.getElementById('filterMedium').addEventListener('click', () => this.filterRecommendations('medium'));
-        document.getElementById('filterLow').addEventListener('click', () => this.filterRecommendations('low'));
-
-        // Entity graph filters
-        document.getElementById('filterAllEntities').addEventListener('click', () => this.filterEntities('all'));
-        document.getElementById('filterOrganization').addEventListener('click', () => this.filterEntities('Organization'));
-        document.getElementById('filterPerson').addEventListener('click', () => this.filterEntities('Person'));
-        document.getElementById('filterProduct').addEventListener('click', () => this.filterEntities('Product'));
-
-        // Graph controls
-        document.getElementById('resetZoom').addEventListener('click', () => this.visualizations.resetZoom());
-        document.getElementById('centerGraph').addEventListener('click', () => this.visualizations.centerGraph());
-
-        // Schema controls
-        document.getElementById('expandAllSchemas').addEventListener('click', () => this.expandAllSchemas());
-        document.getElementById('collapseAllSchemas').addEventListener('click', () => this.collapseAllSchemas());
-        document.getElementById('exportSchemas').addEventListener('click', () => this.exportSchemas());
-        document.getElementById('schemaTypeFilter').addEventListener('change', (e) => this.filterSchemas(e.target.value));
-
-        // Recent scans
-        document.getElementById('refreshScans').addEventListener('click', () => this.loadRecentScans());
-
-        // Close modals on background click
-        this.attachModalBackgroundListeners();
+        // Filter buttons
+        this.initFilterButtons();
     }
 
-    /**
-     * Attach modal background click listeners
-     */
-    attachModalBackgroundListeners() {
-        const modals = ['settingsModal', 'helpModal', 'siteAnalysisModal'];
-        
-        modals.forEach(modalId => {
-            const modal = document.getElementById(modalId);
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    modal.classList.add('hidden');
-                }
+    // Initialize filter buttons
+    initFilterButtons() {
+        // Priority filters
+        document.querySelectorAll('.filter-button').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const filter = e.target.dataset.filter;
+                this.filterRecommendations(filter);
+                
+                // Update active state
+                document.querySelectorAll('.filter-button').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+            });
+        });
+
+        // Graph filters
+        document.querySelectorAll('.graph-filter-button').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const filter = e.target.dataset.filter;
+                this.filterEntityGraph(filter);
+                
+                // Update active state
+                document.querySelectorAll('.graph-filter-button').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
             });
         });
     }
 
-    /**
-     * Handle main analyze button click
-     */
-    async handleAnalyze() {
-        const url = this.getUrlInput();
-        if (!url) return;
+    // Initialize modals
+    initModals() {
+        // Close modal handlers
+        document.querySelectorAll('.modal-close').forEach(closeBtn => {
+            closeBtn.addEventListener('click', (e) => {
+                const modal = e.target.closest('.modal');
+                this.hideModal(modal);
+            });
+        });
 
-        const options = this.getAnalysisOptions();
-        await this.performAnalysis(url, options);
+        // Close modal on background click
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    this.hideModal(modal);
+                }
+            });
+        });
+
+        // Settings modal save
+        document.getElementById('settingsModal')?.querySelector('.modal-content')?.addEventListener('change', () => {
+            this.saveSettings();
+        });
     }
 
-    /**
-     * Handle quick check
-     */
-    async handleQuickCheck() {
-        const url = this.getUrlInput();
-        if (!url) return;
-
-        this.showToast('🔍 Starting quick check...', 'info');
-        
+    // Check API health status
+    async checkAPIHealth() {
         try {
-            const result = await this.apiClient.healthCheck(url);
-            this.displayQuickCheckResults(result);
-            this.showToast('✅ Quick check completed', 'success');
+            const health = await window.schemaAPI.checkHealth();
+            this.updateStatusIndicator(health.status, health.data);
         } catch (error) {
-            this.showError('Quick check failed: ' + error.message);
+            console.error('Health check failed:', error);
+            this.updateStatusIndicator('offline', { error: error.message });
         }
     }
 
-    /**
-     * Handle deep analysis
-     */
-    async handleDeepAnalysis() {
-        const url = this.getUrlInput();
-        if (!url) return;
+    // Update status indicator
+    updateStatusIndicator(status, data) {
+        const indicator = document.getElementById('statusIndicator');
+        if (!indicator) return;
 
-        // Enable all options for deep analysis
-        document.getElementById('deepScan').checked = true;
-        document.getElementById('includeEntities').checked = true;
-        document.getElementById('includeRecommendations').checked = true;
-        document.getElementById('checkConsistency').checked = true;
+        const dot = indicator.querySelector('span');
+        const text = indicator.querySelector('span').nextSibling;
 
-        const options = this.getAnalysisOptions();
-        await this.performAnalysis(url, options);
+        if (status === 'online') {
+            dot.className = 'inline-block w-2 h-2 bg-green-500 rounded-full mr-2';
+            indicator.lastChild.textContent = 'API Ready';
+        } else {
+            dot.className = 'inline-block w-2 h-2 bg-red-500 rounded-full mr-2';
+            indicator.lastChild.textContent = 'API Offline';
+        }
     }
 
-    /**
-     * Get URL from input with validation
-     */
-    getUrlInput() {
+    // Set example URL for demo
+    setExampleURL() {
         const urlInput = document.getElementById('urlInput');
-        const url = urlInput.value.trim();
-        
+        if (urlInput && !urlInput.value) {
+            urlInput.value = 'https://schema.org';
+        }
+    }
+
+    // Start single page analysis
+    async startSinglePageAnalysis() {
+        const urlInput = document.getElementById('urlInput');
+        const url = urlInput?.value?.trim();
+
         if (!url) {
             this.showError('Please enter a URL to analyze');
-            urlInput.focus();
-            return null;
+            return;
         }
 
-        try {
-            new URL(url);
-            return url;
-        } catch (e) {
+        if (!window.schemaAPI.isValidURL(url)) {
             this.showError('Please enter a valid URL (including http:// or https://)');
-            urlInput.focus();
-            return null;
+            return;
         }
-    }
 
-    /**
-     * Get analysis options from form
-     */
-    getAnalysisOptions() {
-        return {
-            deep_scan: document.getElementById('deepScan').checked,
-            include_recommendations: document.getElementById('includeRecommendations').checked,
-            check_consistency: document.getElementById('checkConsistency').checked,
-            analyze_entities: document.getElementById('includeEntities').checked,
-            timeout: parseInt(this.settings.timeout) || 30000
+        console.log('🔍 Starting analysis for:', url);
+
+        // Get analysis options
+        const options = {
+            deepScan: document.getElementById('deepScan')?.checked || false,
+            entityAnalysis: document.getElementById('entityAnalysis')?.checked || false,
+            consistencyCheck: document.getElementById('consistencyCheck')?.checked || false,
+            recommendations: document.getElementById('recommendations')?.checked || false
         };
-    }
 
-    /**
-     * Perform main analysis
-     */
-    async performAnalysis(url, options) {
         try {
-            this.showLoading('Analyzing URL...', 'Extracting schema markup and analyzing structure');
-            this.hideResults();
-
-            const result = await this.apiClient.analyze(url, options);
+            this.showLoading('Analyzing page...', 0);
+            
+            const result = await window.schemaAPI.analyzePage(url, options);
             
             if (result.status === 'completed') {
+                this.currentScanId = result.scan_id;
                 this.currentResults = result;
                 this.displayResults(result);
-                this.showToast('✅ Analysis completed successfully', 'success');
+                this.updateLastUpdate();
             } else {
-                throw new Error('Analysis failed: ' + result.error);
+                throw new Error(result.error || 'Analysis failed');
             }
 
         } catch (error) {
-            this.showError('Analysis failed: ' + error.message);
-        } finally {
-            this.hideLoading();
+            console.error('Analysis failed:', error);
+            this.showError(window.schemaAPI.formatError(error));
         }
     }
 
-    /**
-     * Handle site analysis
-     */
-    async handleSiteAnalysis() {
-        const startUrl = document.getElementById('siteStartUrl').value.trim();
-        
-        if (!startUrl) {
-            this.showError('Please enter a start URL for site analysis');
+    // Start site analysis
+    async startSiteAnalysis() {
+        const urlInput = document.getElementById('siteUrlInput');
+        const url = urlInput?.value?.trim();
+
+        if (!url) {
+            this.showError('Please enter a website URL to scan');
             return;
         }
 
-        try {
-            new URL(startUrl);
-        } catch (e) {
-            this.showError('Please enter a valid start URL');
+        if (!window.schemaAPI.isValidURL(url)) {
+            this.showError('Please enter a valid URL (including http:// or https://)');
             return;
         }
 
+        console.log('🗺️ Starting site scan for:', url);
+
+        // Get scan options
         const options = {
-            max_pages: parseInt(document.getElementById('siteMaxPages').value) || 25,
-            include_sitemaps: document.getElementById('includeSitemaps').checked,
-            follow_external: false,
-            crawl_delay: 1000
+            maxPages: parseInt(document.getElementById('maxPages')?.value) || 25,
+            crawlDepth: parseInt(document.getElementById('crawlDepth')?.value) || 3,
+            includeSitemaps: document.getElementById('includeSitemaps')?.checked || true
         };
 
-        this.hideSiteAnalysisModal();
-        
         try {
-            this.showLoading('Starting site analysis...', 'Discovering pages and analyzing schemas');
+            this.showLoading('Starting site scan...', 0);
             
-            const scanResult = await this.apiClient.scanSite(startUrl, options);
+            const scanResponse = await window.schemaAPI.scanSite(url, options);
             
-            if (scanResult.scan_id) {
-                this.activeScan = scanResult.scan_id;
-                this.monitorSiteAnalysis(scanResult.scan_id);
-                this.showToast('🗺️ Site analysis started', 'info');
+            if (scanResponse.scan_id) {
+                this.currentScanId = scanResponse.scan_id;
+                
+                // Start polling for results
+                await this.pollScanProgress(scanResponse.scan_id);
             } else {
-                throw new Error('Failed to start site analysis');
+                throw new Error('Failed to start site scan');
             }
 
         } catch (error) {
-            this.showError('Failed to start site analysis: ' + error.message);
-            this.hideLoading();
+            console.error('Site scan failed:', error);
+            this.showError(window.schemaAPI.formatError(error));
         }
     }
 
-    /**
-     * Monitor site analysis progress
-     */
-    async monitorSiteAnalysis(scanId) {
-        const checkInterval = setInterval(async () => {
-            try {
-                const progress = await this.apiClient.getProgress(scanId);
-                
-                this.updateProgress(progress.progress.progress, 
-                    `Scanning pages: ${progress.progress.completed}/${progress.progress.total}`,
-                    `ETA: ${progress.progress.eta_minutes} minutes`);
-
-                if (progress.status === 'completed') {
-                    clearInterval(checkInterval);
+    // Poll scan progress
+    async pollScanProgress(scanId) {
+        try {
+            const result = await window.schemaAPI.pollScanProgress(
+                scanId,
+                (progress) => {
+                    // Update progress
+                    const message = progress.status === 'processing' ? 
+                        `Scanning... (${progress.progress?.scanned || 0} pages scanned)` :
+                        'Processing results...';
                     
-                    const results = await this.apiClient.getResults(scanId);
-                    this.currentResults = results;
-                    this.displaySiteResults(results);
-                    this.hideLoading();
-                    this.showToast('✅ Site analysis completed', 'success');
+                    const percentage = progress.progress ? 
+                        (progress.progress.scanned / (progress.progress.scanned + progress.progress.queued)) * 100 :
+                        0;
                     
-                } else if (progress.status === 'failed') {
-                    clearInterval(checkInterval);
-                    this.hideLoading();
-                    this.showError('Site analysis failed');
-                }
+                    this.showLoading(message, percentage);
+                },
+                3000 // Poll every 3 seconds
+            );
 
-            } catch (error) {
-                clearInterval(checkInterval);
-                this.hideLoading();
-                this.showError('Error monitoring site analysis: ' + error.message);
-            }
-        }, 2000); // Check every 2 seconds
+            this.currentResults = result;
+            this.displayResults(result);
+            this.updateLastUpdate();
 
-        // Stop monitoring after 30 minutes
-        setTimeout(() => {
-            clearInterval(checkInterval);
-            if (this.activeScan === scanId) {
-                this.hideLoading();
-                this.showError('Site analysis timeout - please check results manually');
-            }
-        }, 30 * 60 * 1000);
-    }
-
-    /**
-     * Display quick check results
-     */
-    displayQuickCheckResults(result) {
-        const toast = this.components.createToast(
-            `Quick Check Results: ${result.status.toUpperCase()}`,
-            `Score: ${result.quick_stats.seo_score}/100 | Schemas: ${result.quick_stats.schema_count} | Issues: ${result.quick_stats.critical_issues}`,
-            result.status === 'healthy' ? 'success' : result.status === 'warning' ? 'warning' : 'error',
-            10000
-        );
-        
-        if (result.quick_fixes && result.quick_fixes.length > 0) {
-            const fixesList = result.quick_fixes.join(', ');
-            toast.querySelector('.toast-body').innerHTML += `<br><small>Quick fixes: ${fixesList}</small>`;
+        } catch (error) {
+            console.error('Scan progress polling failed:', error);
+            this.showError(window.schemaAPI.formatError(error));
         }
     }
 
-    /**
-     * Display main analysis results
-     */
-    displayResults(result) {
+    // Display analysis results
+    displayResults(results) {
+        console.log('📊 Displaying results:', results);
+
+        this.hideLoading();
+        this.hideError();
         this.showResults();
-        
-        // Update stats cards
-        this.updateStatsCards(result);
-        
+
+        // Update summary cards
+        this.updateSummaryCards(results);
+
         // Display recommendations
-        this.displayRecommendations(result.results.recommendations || []);
-        
-        // Display entity graph
-        if (result.results.entities) {
-            this.visualizations.renderEntityGraph(result.results.entities);
-        }
-        
-        // Display schema details
-        this.displaySchemaDetails(result.results.schemas || []);
-        
-        // Update recent scans
-        this.loadRecentScans();
+        this.displayRecommendations(results.results.recommendations || []);
+
+        // Display schema breakdown
+        this.displaySchemaBreakdown(results.results.schemas || []);
+
+        // Display consistency analysis
+        this.displayConsistencyAnalysis(results.results.consistency_analysis || {});
+
+        // Create entity graph
+        this.createEntityGraph(results.results.entities || { found: [], connections: [] });
     }
 
-    /**
-     * Display site analysis results
-     */
-    displaySiteResults(result) {
-        this.showResults();
-        
-        // Create site-specific stats
-        const siteStats = {
-            seo_score: result.site_analysis?.seo_score || { overall: 0 },
-            entities: result.site_analysis?.entity_ecosystem || { totalEntities: 0, entityTypes: [] },
-            consistency: result.site_analysis?.cross_page_consistency || { bestPracticeScore: 0 },
-            pages: result.totalPages || 0,
-            schemas: result.totalSchemas || 0
-        };
-        
-        this.updateStatsCards({ results: siteStats });
-        
-        // Display site recommendations
-        this.displayRecommendations(result.site_analysis?.site_recommendations || []);
-        
-        // Display site entity graph
-        if (result.site_analysis?.entity_ecosystem) {
-            this.visualizations.renderEntityGraph(result.site_analysis.entity_ecosystem);
-        }
-        
-        // Display all schemas from site
-        const allSchemas = result.schemas || [];
-        this.displaySchemaDetails(allSchemas.map(schema => ({
-            type: schema['@type'],
-            schema: schema,
-            rank: 1
-        })));
-    }
-
-    /**
-     * Update statistics cards
-     */
-    updateStatsCards(result) {
-        const seoScore = result.results?.seo_score?.overall || 0;
-        const entities = result.results?.entities || {};
-        const consistency = result.results?.consistency_analysis || {};
-        const recommendations = result.results?.recommendations || [];
+    // Update summary cards
+    updateSummaryCards(results) {
+        const seoScore = results.results.seo_score?.overall || 0;
+        const entities = results.results.entities?.found || [];
+        const recommendations = results.results.recommendations || [];
+        const consistency = results.results.consistency_analysis?.score || 0;
 
         // SEO Score
         document.getElementById('seoScore').textContent = seoScore;
-        document.getElementById('seoGrade').textContent = this.getScoreGrade(seoScore);
-        document.getElementById('seoGrade').className = `text-sm font-medium ${this.getScoreColor(seoScore)}`;
+        const seoTrend = document.getElementById('seoTrend');
+        if (seoTrend) {
+            seoTrend.textContent = `${this.getScoreLabel(seoScore)} • out of 100`;
+        }
 
-        // Entities
-        document.getElementById('entitiesCount').textContent = entities.totalEntities || 0;
-        document.getElementById('entityTypes').textContent = `${(entities.entityTypes || []).length} types`;
+        // Entity Count
+        document.getElementById('entityCount').textContent = entities.length;
+        const entityDetails = document.getElementById('entityDetails');
+        if (entityDetails) {
+            entityDetails.textContent = `${entities.length === 1 ? 'type' : 'types'} found`;
+        }
 
-        // Issues
-        const highPriorityIssues = recommendations.filter(r => r.level === 'high').length;
-        document.getElementById('issuesCount').textContent = highPriorityIssues;
-        document.getElementById('issuesSeverity').textContent = this.getIssueSeverityText(recommendations);
-        document.getElementById('issuesSeverity').className = `text-sm ${this.getIssueColor(highPriorityIssues)}`;
+        // Issue Count
+        const highPriorityIssues = recommendations.filter(r => r.priority === 'high').length;
+        document.getElementById('issueCount').textContent = highPriorityIssues;
+        const issueDetails = document.getElementById('issueDetails');
+        if (issueDetails) {
+            issueDetails.textContent = highPriorityIssues === 0 ? 'none found' : 'to fix';
+        }
 
-        // Consistency
-        const consistencyScore = consistency.bestPracticeScore || 0;
-        document.getElementById('consistencyScore').textContent = `${consistencyScore}/100`;
-        document.getElementById('consistencyGrade').textContent = this.getScoreGrade(consistencyScore);
-        document.getElementById('consistencyGrade').className = `text-sm font-medium ${this.getScoreColor(consistencyScore)}`;
+        // Consistency Score
+        document.getElementById('consistencyScore').textContent = consistency;
+        const consistencyDetails = document.getElementById('consistencyDetails');
+        if (consistencyDetails) {
+            consistencyDetails.textContent = `${this.getScoreLabel(consistency)} • out of 100`;
+        }
     }
 
-    /**
-     * Display recommendations
-     */
+    // Get score label
+    getScoreLabel(score) {
+        if (score >= 80) return 'Excellent';
+        if (score >= 60) return 'Good';
+        if (score >= 40) return 'Fair';
+        return 'Needs Work';
+    }
+
+    // Display recommendations
     displayRecommendations(recommendations) {
         const container = document.getElementById('recommendationsList');
-        
+        if (!container) return;
+
         if (!recommendations || recommendations.length === 0) {
-            container.innerHTML = this.components.createEmptyState(
-                '✅ No issues found',
-                'Your schema markup looks good!',
-                'checkmark'
-            );
+            container.innerHTML = `
+                <div class="text-center py-8 text-green-600">
+                    <div class="text-4xl mb-2">✅</div>
+                    <p class="font-medium">Great job! No issues found.</p>
+                    <p class="text-sm text-gray-600">Your schema markup looks good.</p>
+                </div>
+            `;
             return;
         }
 
-        container.innerHTML = '';
-        
-        recommendations.forEach((rec, index) => {
-            const element = this.components.createRecommendationCard(rec, index);
-            container.appendChild(element);
-        });
+        container.innerHTML = recommendations.map((rec, index) => `
+            <div class="recommendation-item ${rec.priority}" data-priority="${rec.priority}">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex-1">
+                        <div class="flex items-center space-x-2 mb-1">
+                            <span class="priority-badge ${rec.priority}">${rec.priority.toUpperCase()}</span>
+                            <h3 class="font-medium text-gray-900">${rec.type}</h3>
+                        </div>
+                        <p class="text-sm text-gray-700">${rec.message}</p>
+                        ${rec.details ? `<p class="text-xs text-gray-500 mt-1">${rec.details}</p>` : ''}
+                    </div>
+                </div>
+                
+                ${rec.example ? `
+                    <div class="mt-3">
+                        <p class="text-xs font-medium text-gray-700 mb-2">Recommended fix:</p>
+                        <div class="code-block fix">
+                            <pre><code>${this.escapeHtml(rec.example)}</code></pre>
+                        </div>
+                        <div class="flex space-x-2 mt-2">
+                            <button onclick="app.copyToClipboard('${this.escapeForJs(rec.example)}', this)" 
+                                    class="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">
+                                📋 Copy Fix
+                            </button>
+                            <button onclick="app.showSchemaModal('${this.escapeForJs(rec.type)}', '${this.escapeForJs(rec.example)}')" 
+                                    class="text-xs px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700">
+                                👁️ View Details
+                            </button>
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        `).join('');
     }
 
-    /**
-     * Display schema details
-     */
-    displaySchemaDetails(schemas) {
-        const container = document.getElementById('schemaDetailsList');
-        const filter = document.getElementById('schemaTypeFilter');
-        
+    // Display schema breakdown
+    displaySchemaBreakdown(schemas) {
+        const container = document.getElementById('schemaBreakdown');
+        if (!container) return;
+
         if (!schemas || schemas.length === 0) {
-            container.innerHTML = this.components.createEmptyState(
-                '📄 No schemas found',
-                'The analyzed page does not contain schema markup',
-                'document'
-            );
+            container.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <div class="text-2xl mb-2">📭</div>
+                    <p>No schemas found</p>
+                </div>
+            `;
             return;
         }
 
-        // Update filter options
-        this.updateSchemaFilter(schemas);
-        
-        // Display schemas
-        container.innerHTML = '';
-        
-        schemas.forEach((schemaData, index) => {
-            const element = this.components.createSchemaCard(schemaData, index);
-            container.appendChild(element);
+        // Count schema types
+        const typeCounts = {};
+        schemas.forEach(schema => {
+            const type = Array.isArray(schema['@type']) ? schema['@type'][0] : schema['@type'];
+            typeCounts[type] = (typeCounts[type] || 0) + 1;
         });
+
+        container.innerHTML = Object.entries(typeCounts)
+            .sort((a, b) => b[1] - a[1])
+            .map(([type, count]) => `
+                <div class="schema-item">
+                    <div class="flex items-center space-x-2">
+                        <span class="schema-type">${type}</span>
+                        <span class="schema-count">${count}</span>
+                    </div>
+                    <button onclick="app.showSchemasByType('${type}')" 
+                            class="text-xs text-blue-600 hover:text-blue-800">
+                        View →
+                    </button>
+                </div>
+            `).join('');
     }
 
-    /**
-     * Update schema filter dropdown
-     */
-    updateSchemaFilter(schemas) {
-        const filter = document.getElementById('schemaTypeFilter');
-        const types = [...new Set(schemas.map(s => s.type))].sort();
-        
-        // Clear existing options except "All"
-        filter.innerHTML = '<option value="all">All Schema Types</option>';
-        
-        types.forEach(type => {
-            const option = document.createElement('option');
-            option.value = type;
-            option.textContent = type;
-            filter.appendChild(option);
-        });
+    // Display consistency analysis
+    displayConsistencyAnalysis(analysis) {
+        const container = document.getElementById('consistencyAnalysis');
+        if (!container) return;
+
+        if (!analysis || !analysis.idGroups) {
+            container.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <div class="text-2xl mb-2">🔗</div>
+                    <p>No consistency data</p>
+                </div>
+            `;
+            return;
+        }
+
+        const items = [];
+
+        // Good consistency items
+        if (analysis.idGroups) {
+            const goodIds = Array.from(Object.entries(analysis.idGroups))
+                .filter(([id, instances]) => id.startsWith('schema:') && instances.length > 1);
+            
+            goodIds.forEach(([id, instances]) => {
+                items.push(`
+                    <div class="consistency-item good">
+                        <div class="flex items-center justify-between">
+                            <span class="font-medium text-green-800">✅ ${id}</span>
+                            <span class="text-xs text-green-600">${instances.length} uses</span>
+                        </div>
+                        <p class="text-xs text-green-700 mt-1">Good consistency pattern</p>
+                    </div>
+                `);
+            });
+        }
+
+        // Issues
+        if (analysis.issues && analysis.issues.length > 0) {
+            analysis.issues.forEach(issue => {
+                items.push(`
+                    <div class="consistency-item error">
+                        <div class="flex items-center justify-between">
+                            <span class="font-medium text-red-800">❌ Issue Found</span>
+                        </div>
+                        <p class="text-xs text-red-700 mt-1">${issue}</p>
+                    </div>
+                `);
+            });
+        }
+
+        if (items.length === 0) {
+            items.push(`
+                <div class="text-center py-4 text-gray-500">
+                    <p>No consistency analysis available</p>
+                </div>
+            `);
+        }
+
+        container.innerHTML = items.join('');
     }
 
-    /**
-     * Filter recommendations by priority
-     */
-    filterRecommendations(level) {
-        const cards = document.querySelectorAll('[data-recommendation-level]');
-        const buttons = document.querySelectorAll('#recommendationsList').parentElement.querySelectorAll('button');
+    // Create entity graph visualization
+    createEntityGraph(entities) {
+        if (window.createEntityVisualization) {
+            window.createEntityVisualization(entities);
+        } else {
+            console.warn('Entity visualization not available');
+        }
+    }
+
+    // Filter recommendations
+    filterRecommendations(priority) {
+        const items = document.querySelectorAll('.recommendation-item');
         
-        // Update button states
-        buttons.forEach(btn => btn.classList.remove('bg-blue-500', 'text-white'));
-        event.target.classList.add('bg-blue-500', 'text-white');
-        
-        cards.forEach(card => {
-            if (level === 'all' || card.dataset.recommendationLevel === level) {
-                card.style.display = 'block';
+        items.forEach(item => {
+            if (priority === 'all' || item.dataset.priority === priority) {
+                item.style.display = 'block';
             } else {
-                card.style.display = 'none';
+                item.style.display = 'none';
             }
         });
     }
 
-    /**
-     * Filter entities in graph
-     */
-    filterEntities(type) {
-        const buttons = document.querySelectorAll('#entityGraph').parentElement.parentElement.querySelectorAll('button');
-        
-        // Update button states
-        buttons.forEach(btn => btn.classList.remove('bg-blue-500', 'text-white'));
-        event.target.classList.add('bg-blue-500', 'text-white');
-        
-        // Apply filter to visualization
-        this.visualizations.filterEntitiesByType(type);
-    }
-
-    /**
-     * Filter schemas by type
-     */
-    filterSchemas(type) {
-        const cards = document.querySelectorAll('[data-schema-type]');
-        
-        cards.forEach(card => {
-            if (type === 'all' || card.dataset.schemaType === type) {
-                card.style.display = 'block';
-            } else {
-                card.style.display = 'none';
-            }
-        });
-    }
-
-    /**
-     * Expand all schema cards
-     */
-    expandAllSchemas() {
-        const cards = document.querySelectorAll('.schema-card .schema-content');
-        cards.forEach(card => {
-            card.classList.remove('collapsed');
-        });
-    }
-
-    /**
-     * Collapse all schema cards
-     */
-    collapseAllSchemas() {
-        const cards = document.querySelectorAll('.schema-card .schema-content');
-        cards.forEach(card => {
-            card.classList.add('collapsed');
-        });
-    }
-
-    /**
-     * Export schemas to JSON
-     */
-    exportSchemas() {
-        if (!this.currentResults) {
-            this.showError('No analysis results to export');
-            return;
-        }
-
-        const data = {
-            timestamp: new Date().toISOString(),
-            url: this.currentResults.url,
-            results: this.currentResults.results
-        };
-
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `schema-analysis-${new Date().toISOString().slice(0, 10)}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        this.showToast('📥 Results exported successfully', 'success');
-    }
-
-    /**
-     * Load recent scans
-     */
-    async loadRecentScans() {
-        try {
-            const scans = await this.apiClient.getRecentScans();
-            this.displayRecentScans(scans.scans || []);
-        } catch (error) {
-            console.error('Failed to load recent scans:', error);
+    // Filter entity graph
+    filterEntityGraph(filter) {
+        // This would be implemented in visualizations.js
+        if (window.filterEntityGraph) {
+            window.filterEntityGraph(filter);
         }
     }
 
-    /**
-     * Display recent scans
-     */
-    displayRecentScans(scans) {
-        const container = document.getElementById('recentScansList');
+    // Show/hide sections
+    showLoading(message = 'Loading...', progress = 0) {
+        document.getElementById('resultsSection')?.classList.add('hidden');
+        document.getElementById('errorState')?.classList.add('hidden');
         
-        if (!scans || scans.length === 0) {
-            container.innerHTML = this.components.createEmptyState(
-                '📚 No recent scans',
-                'Your analysis history will appear here',
-                'clock'
-            );
-            return;
-        }
-
-        container.innerHTML = '';
-        
-        scans.slice(0, 5).forEach(scan => {
-            const element = this.components.createRecentScanCard(scan);
-            container.appendChild(element);
-        });
-    }
-
-    /**
-     * Load scan results by ID
-     */
-    async loadScanResults(scanId) {
-        try {
-            this.showLoading('Loading results...', 'Retrieving analysis data');
+        const loadingState = document.getElementById('loadingState');
+        if (loadingState) {
+            loadingState.classList.remove('hidden');
             
-            const results = await this.apiClient.getResults(scanId);
-            this.currentResults = results;
+            const messageEl = document.getElementById('loadingMessage');
+            if (messageEl) messageEl.textContent = message;
             
-            if (results.type === 'site_scan') {
-                this.displaySiteResults(results);
-            } else {
-                this.displayResults(results);
+            const progressBar = document.getElementById('progressBar');
+            if (progressBar) progressBar.style.width = `${Math.min(100, Math.max(0, progress))}%`;
+        }
+    }
+
+    hideLoading() {
+        document.getElementById('loadingState')?.classList.add('hidden');
+    }
+
+    showResults() {
+        document.getElementById('resultsSection')?.classList.remove('hidden');
+        document.getElementById('errorState')?.classList.add('hidden');
+    }
+
+    showError(message) {
+        document.getElementById('loadingState')?.classList.add('hidden');
+        document.getElementById('resultsSection')?.classList.add('hidden');
+        
+        const errorState = document.getElementById('errorState');
+        if (errorState) {
+            errorState.classList.remove('hidden');
+            
+            const messageEl = document.getElementById('errorMessage');
+            if (messageEl) messageEl.textContent = message;
+        }
+    }
+
+    hideError() {
+        document.getElementById('errorState')?.classList.add('hidden');
+    }
+
+    // Modal functions
+    showModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.add('show');
+        }
+    }
+
+    hideModal(modal) {
+        if (modal) {
+            modal.classList.remove('show');
+        }
+    }
+
+    showSettingsModal() {
+        // Load current settings into modal
+        const modal = document.getElementById('settingsModal');
+        if (modal) {
+            const timeoutSelect = modal.querySelector('#apiTimeout');
+            const autoRefreshCheck = modal.querySelector('#autoRefresh');
+            const debugCheck = modal.querySelector('#debugMode');
+            
+            if (timeoutSelect) timeoutSelect.value = this.settings.timeout;
+            if (autoRefreshCheck) autoRefreshCheck.checked = this.settings.autoRefresh;
+            if (debugCheck) debugCheck.checked = this.settings.debugMode;
+            
+            this.showModal('settingsModal');
+        }
+    }
+
+    showSchemaModal(title, content) {
+        const modal = document.getElementById('schemaModal');
+        if (modal) {
+            const titleEl = modal.querySelector('#schemaModalTitle');
+            const contentEl = modal.querySelector('#schemaModalContent');
+            
+            if (titleEl) titleEl.textContent = title;
+            if (contentEl) {
+                contentEl.innerHTML = `
+                    <div class="code-block">
+                        <pre><code>${this.escapeHtml(content)}</code></pre>
+                    </div>
+                `;
             }
             
-            this.showToast('✅ Results loaded successfully', 'success');
-        } catch (error) {
-            this.showError('Failed to load results: ' + error.message);
-        } finally {
-            this.hideLoading();
+            this.showModal('schemaModal');
         }
     }
 
-    /**
-     * Settings management
-     */
+    // Utility functions
+    copyToClipboard(text, button) {
+        navigator.clipboard.writeText(text).then(() => {
+            const originalText = button.textContent;
+            button.textContent = '✅ Copied!';
+            button.classList.add('copy-success');
+            
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.classList.remove('copy-success');
+            }, 2000);
+        }).catch(err => {
+            console.error('Copy failed:', err);
+            alert('Copy failed. Please try again.');
+        });
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    escapeForJs(text) {
+        return text.replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n');
+    }
+
+    // Settings management
     loadSettings() {
-        const defaults = {
-            timeout: 30000,
-            maxPages: 25,
-            autoRefresh: false,
-            enableNotifications: false
-        };
-
         try {
             const saved = localStorage.getItem('schemaAnalyzerSettings');
-            return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
-        } catch (e) {
-            return defaults;
+            if (saved) {
+                this.settings = { ...this.settings, ...JSON.parse(saved) };
+            }
+        } catch (error) {
+            console.warn('Could not load settings:', error);
         }
     }
 
     saveSettings() {
-        const settings = {
-            timeout: parseInt(document.getElementById('timeoutSetting').value),
-            maxPages: parseInt(document.getElementById('maxPagesSetting').value),
-            autoRefresh: document.getElementById('autoRefresh').checked,
-            enableNotifications: document.getElementById('enableNotifications').checked
-        };
-
-        this.settings = settings;
-        localStorage.setItem('schemaAnalyzerSettings', JSON.stringify(settings));
-        this.hideSettingsModal();
-        this.showToast('⚙️ Settings saved', 'success');
-    }
-
-    applySettings() {
-        document.getElementById('timeoutSetting').value = this.settings.timeout;
-        document.getElementById('maxPagesSetting').value = this.settings.maxPages;
-        document.getElementById('autoRefresh').checked = this.settings.autoRefresh;
-        document.getElementById('enableNotifications').checked = this.settings.enableNotifications;
-    }
-
-    /**
-     * Modal management
-     */
-    showSettingsModal() {
-        document.getElementById('settingsModal').classList.remove('hidden');
-    }
-
-    hideSettingsModal() {
-        document.getElementById('settingsModal').classList.add('hidden');
-    }
-
-    showHelpModal() {
-        document.getElementById('helpModal').classList.remove('hidden');
-    }
-
-    hideHelpModal() {
-        document.getElementById('helpModal').classList.add('hidden');
-    }
-
-    showSiteAnalysisModal() {
-        const urlInput = document.getElementById('urlInput');
-        const siteUrlInput = document.getElementById('siteStartUrl');
-        
-        if (urlInput.value) {
+        const modal = document.getElementById('settingsModal');
+        if (modal) {
+            const timeout = modal.querySelector('#apiTimeout')?.value;
+            const autoRefresh = modal.querySelector('#autoRefresh')?.checked;
+            const debugMode = modal.querySelector('#debugMode')?.checked;
+            
+            this.settings = {
+                timeout: parseInt(timeout) || 30000,
+                autoRefresh: autoRefresh || false,
+                debugMode: debugMode || false
+            };
+            
             try {
-                const url = new URL(urlInput.value);
-                siteUrlInput.value = url.origin;
-            } catch (e) {
-                // Invalid URL, ignore
+                localStorage.setItem('schemaAnalyzerSettings', JSON.stringify(this.settings));
+                
+                // Apply to API client
+                window.schemaAPI.setConfig({
+                    timeout: this.settings.timeout,
+                    debug: this.settings.debugMode
+                });
+                
+                console.log('Settings saved:', this.settings);
+            } catch (error) {
+                console.error('Could not save settings:', error);
             }
         }
+    }
+
+    updateLastUpdate() {
+        const lastUpdateEl = document.getElementById('lastUpdate');
+        if (lastUpdateEl) {
+            lastUpdateEl.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+        }
+    }
+
+    retryAnalysis() {
+        // Determine which type of analysis to retry
+        const singlePanel = document.getElementById('singleAnalysisPanel');
+        const sitePanel = document.getElementById('siteAnalysisPanel');
         
-        document.getElementById('siteAnalysisModal').classList.remove('hidden');
+        if (singlePanel && !singlePanel.classList.contains('hidden')) {
+            this.startSinglePageAnalysis();
+        } else if (sitePanel && !sitePanel.classList.contains('hidden')) {
+            this.startSiteAnalysis();
+        }
     }
 
-    hideSiteAnalysisModal() {
-        document.getElementById('siteAnalysisModal').classList.add('hidden');
-    }
-
-    /**
-     * UI state management
-     */
-    showLoading(title = 'Processing...', message = 'Please wait') {
-        const loadingState = document.getElementById('loadingState');
-        document.getElementById('loadingTitle').textContent = title;
-        document.getElementById('loadingMessage').textContent = message;
-        loadingState.classList.remove('hidden');
-    }
-
-    hideLoading() {
-        document.getElementById('loadingState').classList.add('hidden');
-    }
-
-    updateProgress(percentage, title, message) {
-        document.getElementById('progressBar').style.width = `${percentage}%`;
-        document.getElementById('progressText').textContent = `${percentage}%`;
-        
-        if (title) document.getElementById('loadingTitle').textContent = title;
-        if (message) document.getElementById('loadingMessage').textContent = message;
-    }
-
-    showResults() {
-        document.getElementById('resultsContainer').classList.remove('hidden');
-    }
-
-    hideResults() {
-        document.getElementById('resultsContainer').classList.add('hidden');
-    }
-
-    /**
-     * Utility methods
-     */
-    getScoreGrade(score) {
-        if (score >= 90) return 'A+';
-        if (score >= 80) return 'A';
-        if (score >= 70) return 'B';
-        if (score >= 60) return 'C';
-        if (score >= 50) return 'D';
-        return 'F';
-    }
-
-    getScoreColor(score) {
-        if (score >= 80) return 'text-green-600';
-        if (score >= 60) return 'text-yellow-600';
-        return 'text-red-600';
-    }
-
-    getIssueColor(count) {
-        if (count === 0) return 'text-green-600';
-        if (count <= 2) return 'text-yellow-600';
-        return 'text-red-600';
-    }
-
-    getIssueSeverityText(recommendations) {
-        const high = recommendations.filter(r => r.level === 'high').length;
-        const medium = recommendations.filter(r => r.level === 'medium').length;
-        
-        if (high === 0 && medium === 0) return 'No critical issues';
-        if (high === 0) return `${medium} medium priority`;
-        return `${high} high, ${medium} medium`;
-    }
-
-    showToast(message, type = 'info', duration = 5000) {
-        this.components.showToast(message, type, duration);
-    }
-
-    showError(message) {
-        this.showToast(message, 'error', 8000);
+    showSchemasByType(type) {
+        if (this.currentResults && this.currentResults.results.schemas) {
+            const schemas = this.currentResults.results.schemas.filter(schema => {
+                const schemaType = Array.isArray(schema['@type']) ? schema['@type'][0] : schema['@type'];
+                return schemaType === type;
+            });
+            
+            const content = schemas.map(schema => JSON.stringify(schema, null, 2)).join('\n\n---\n\n');
+            this.showSchemaModal(`${type} Schemas (${schemas.length})`, content);
+        }
     }
 }
 
-// Initialize application when DOM is loaded
+// Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    window.schemaAnalyzer = new SchemaWebAnalyzer();
+    window.app = new SchemaAnalyzerApp();
 });
 
-// Global error handler
-window.addEventListener('error', (event) => {
-    console.error('Global error:', event.error);
-    if (window.schemaAnalyzer) {
-        window.schemaAnalyzer.showError('An unexpected error occurred. Please refresh the page.');
-    }
-});
-
-// Handle unhandled promise rejections
-window.addEventListener('unhandledrejection', (event) => {
-    console.error('Unhandled promise rejection:', event.reason);
-    if (window.schemaAnalyzer) {
-        window.schemaAnalyzer.showError('An unexpected error occurred. Please try again.');
-    }
-});
+// Export for global access
+window.SchemaAnalyzerApp = SchemaAnalyzerApp;
